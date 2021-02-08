@@ -48,7 +48,7 @@ for varname in VariationName:
 
     NetData = app.GetProjectFolder('netdat')
     Net = NetData.GetContents('110KV.ElmNet')
-    ConvComp = Net[0].GetContents('Test-gridformingConverter.ElmComp')
+    # ConvComp = Net[0].GetContents('Test-gridformingConverter.ElmComp')
 
     '''
     #current control frame
@@ -107,6 +107,9 @@ for varname in VariationName:
 
     ResultsList.append(Results)
 
-DM.DFplot(ResultsList, 1, [2, 1], [3, 13], xaxis=0, xlabel='Time (s)', ylabel=['Voltage (p.u.)', 'Frequency (Hz)'], seriesnames=VariationName )
+seriesnames = VariationName
+seriesnames.append('Node')
+columns = [1, 7]
+DM.DFplot(ResultsList, 1, [2, 1], columns, xaxis=0, fixplot=[8, 9], xlabel='Time (s)', ylabel=['Voltage (p.u.)', 'Frequency (Hz)'], seriesnames=seriesnames)
 
 app.PostCommand("exit")
