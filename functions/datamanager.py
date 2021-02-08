@@ -32,12 +32,19 @@ def DFplot(DFlist, nfigs,nsplts,columns, **kwargs):
             plt.subplot(nsplts[0], nsplts[1], m+1)
             c = 0
 
+            if 'fixplot' in kwargs:
+                plt.figure(n + 1).axes[m].plot(DFlist[0].iloc[:, [kwargs.get('xaxis')]], DFlist[0].iloc[:, [kwargs.get('fixplot')[m]]],
+                                               label=kwargs.get('seriesnames')[-1])
+
+
+            #dataframe-dependent plots
             for DF in DFlist:
 
                 plt.figure(n+1).axes[m].plot(DF.iloc[:, [kwargs.get('xaxis')]], DF.iloc[:, [columns[m]]], label=kwargs.get('seriesnames')[c])
 
                 plt.figure(n+1).axes[m].set_xlabel(kwargs.get('xlabel'))
                 plt.figure(n+1).axes[m].set_ylabel(kwargs.get('ylabel')[m])
+                plt.figure(n+1).axes[m].ticklabel_format(useOffset=False)
                 plt.figure(n+1).axes[m].legend()
 
                 c += 1
