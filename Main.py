@@ -19,7 +19,7 @@ except pf.ExitError as error:
     print('error.code = %d' % error.code)
 
 # Activate the project
-projname = str("DEAModel_gridforming_20210105")
+projname = str("DEAModel_gridforming_20210204")
 
 app.ActivateProject(projname)
 
@@ -88,7 +88,7 @@ for varname in VariationName:
     # execute the object to export results
 
     if VariationName.index(varname) == 0:
-        Resultspath = os.getcwd()+"\\python\\Results"
+        Resultspath = os.getcwd()+"\\Results"
         newfolder = datetime.datetime.now().strftime("\\%d.%m.%Y_%H-%M-%S\\")
         os.mkdir(Resultspath + newfolder)
 
@@ -98,14 +98,15 @@ for varname in VariationName:
 
     freqdrop = app.GetFromStudyCase('IntCase')  # study case
     # Events = freqdrop.GetContents('*.EvtParam') contents of event
+
+    # execute results
     PFM.execComRes(freqdrop,ElmRes,f_name,iopt_exp=6,iopt_sep=0,dec_Sep='.')
 
+    # import results
     Results = DM.importData(f_name).astype(float)
 
     ResultsList.append(Results)
 
-DM.DFplot(ResultsList, 1, [2, 1], [ 3, 13], xaxis=0, seriesnames=VariationName )
-
-
+DM.DFplot(ResultsList, 1, [2, 1], [3, 13], xaxis=0, xlabel='Time (s)', ylabel=['Voltage (p.u.)', 'Frequency (Hz)'], seriesnames=VariationName )
 
 app.PostCommand("exit")

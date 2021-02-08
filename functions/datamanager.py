@@ -34,14 +34,11 @@ def DFplot(DFlist, nfigs,nsplts,columns, **kwargs):
 
             for DF in DFlist:
 
-                xdata = kwargs.get('xaxis')
+                plt.figure(n+1).axes[m].plot(DF.iloc[:, [kwargs.get('xaxis')]], DF.iloc[:, [columns[m]]], label=kwargs.get('seriesnames')[c])
 
-                plt.figure(n+1).axes[m].plot(DF.iloc[:, [xdata]], DF.iloc[:, [columns[m]]], label=kwargs.get('seriesnames')[c])
-
-                plt.figure(n+1).axes[m].set_xlabel(DF.columns[xdata])
-                plt.figure(n+1).axes[m].set_ylabel('cosa')
-                plt.figure(n + 1).axes[m].legend()
-
+                plt.figure(n+1).axes[m].set_xlabel(kwargs.get('xlabel'))
+                plt.figure(n+1).axes[m].set_ylabel(kwargs.get('ylabel')[m])
+                plt.figure(n+1).axes[m].legend()
 
                 c += 1
 
