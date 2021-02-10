@@ -30,8 +30,22 @@ project = app.GetActiveProject()
 # Get Calculation object by getting active study case. This active case is related to a grid or part of a grid that is active.
 #Then, getting the initial conditions and the simulation object to being executed at the end
 
+#  function CreateSimpleStabilityStudy
 
+MyCases = app.GetProjectFolder('study')
+MyCases.GetContents()[0].GetAttribute('loc_name')
+AktCase = app.GetActiveStudyCase()
+CaseNames = ['Frequency Step', 'Voltage Step', 'Load Step', 'Voltage Oscillations']
 
+if len(MyCases.GetContents()) == 1:
+
+    if CaseNames[0] not in AktCase.GetFullName():
+
+        AktCase.SetAttribute('loc_name', CaseNames[0])
+
+    for n in range(3):
+
+        MyCases.AddCopy(AktCase,CaseNames[n+1])
 
 #get project folder
 
