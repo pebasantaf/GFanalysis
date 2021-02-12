@@ -32,20 +32,8 @@ project = app.GetActiveProject()
 
 #  function CreateSimpleStabilityStudy
 
-MyCases = app.GetProjectFolder('study')
-MyCases.GetContents()[0].GetAttribute('loc_name')
-AktCase = app.GetActiveStudyCase()
-CaseNames = ['Frequency Step', 'Voltage Step', 'Load Step', 'Voltage Oscillations']
+PFM.CreateSimpleStabilityStudy(app)
 
-if len(MyCases.GetContents()) == 1:
-
-    if CaseNames[0] not in AktCase.GetFullName():
-
-        AktCase.SetAttribute('loc_name', CaseNames[0])
-
-    for n in range(3):
-
-        MyCases.AddCopy(AktCase,CaseNames[n+1])
 
 #get project folder
 
@@ -114,7 +102,10 @@ for varname in VariationName:
     # Events = freqdrop.GetContents('*.EvtParam') contents of event
 
     # execute results
-    PFM.execComRes(freqdrop,ElmRes,f_name,iopt_exp=6,iopt_sep=0,dec_Sep='.')
+    PFM.execComRes(freqdrop,ElmRes,f_name,
+                   iopt_exp=6,
+                   iopt_sep=0,
+                   dec_Sep='.')
 
     # import results
     Results = DM.importData(f_name).astype(float)
@@ -124,6 +115,11 @@ for varname in VariationName:
 seriesnames = VariationName
 seriesnames.append('Node')
 columns = [1, 7]
-DM.DFplot(ResultsList, 1, [2, 1], columns, xaxis=0, fixplot=[8, 9], xlabel='Time (s)', ylabel=['Voltage (p.u.)', 'Frequency (Hz)'], seriesnames=seriesnames)
+DM.DFplot(ResultsList, 1, [2, 1], columns,
+          xaxis=0,
+          fixplot=[8, 9],
+          xlabel='Time (s)',
+          ylabel=['Voltage (p.u.)', 'Frequency (Hz)'],
+          seriesnames=seriesnames)
 
 app.PostCommand("exit")

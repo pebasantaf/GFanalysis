@@ -41,3 +41,49 @@ def ActivateVariation(SelVariation, app):
 
 
     return varis
+
+def CreateSimpleStabilityStudy(app):
+
+    MyCases = app.GetProjectFolder('study')
+    MyScenarios = app.GetProjectFolder('scen')
+    AktCase = app.GetActiveStudyCase()
+    CaseNames = ['Frequency Step', 'Voltage Step', 'Load Step', 'Voltage Oscillations']
+
+    if len(MyCases.GetContents()) == 1:
+
+        if CaseNames[0] not in AktCase.GetFullName():
+            AktCase.SetAttribute('loc_name', CaseNames[0])
+            print('Changing name of active study case')
+        print('Procceeding to create the rest of cases')
+
+        for n in range(3):
+            MyCases.AddCopy(AktCase, CaseNames[n + 1])
+
+    if not MyScenarios.GetContents():
+
+        print('Scenarios object empty. Creating SM and VS scenarios')
+        MyScenarios.CreateObject('IntScenario', 'SM')
+        MyScenarios.CreateObject('IntScenario', 'VS')
+
+    else:
+
+        s = 0
+        t = 0
+        for scen in MyScenarios.GetContents():
+
+            if 'SM' in scen.GetFullName():
+
+                s += 1
+
+                if s == 0:
+                    print("Creating SM scenario")
+                    MyScenarios.CreateObject('IntScenario', 'SM')
+
+            elif 'VS' in scen.GetFullName():
+
+                t += 1
+
+                if t == 0:
+
+                    print("Creating VS scenario")
+                    MyScenarios.CreateObject('IntScenario', 'VS')
