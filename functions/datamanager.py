@@ -40,7 +40,7 @@ def DFplot(DFlist, nfigs,nsplts,columns, **kwargs):
             #dataframe-dependent plots
             for DF in DFlist:
 
-                plt.figure(n+1).axes[m].plot(DF.iloc[:, [kwargs.get('xaxis')]], DF.iloc[:, [columns[m]]], label=kwargs.get('seriesnames')[c])
+                plt.figure(n+1).axes[m].plot(DF.iloc[:, [kwargs.get('xaxis')]], DF.iloc[:, [columns[c][m]]], label=kwargs.get('seriesnames')[c])
 
                 plt.figure(n+1).axes[m].set_xlabel(kwargs.get('xlabel'))
                 plt.figure(n+1).axes[m].set_ylabel(kwargs.get('ylabel')[m])

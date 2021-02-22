@@ -32,7 +32,7 @@ project = app.GetActiveProject()
 
 #  function CreateSimpleStabilityStudy
 
-PFM.CreateSimpleStabilityStudy(app)
+PFM.CreateSimpleStabilityStudy(app, 0)
 
 
 #get project folder
@@ -40,7 +40,7 @@ PFM.CreateSimpleStabilityStudy(app)
 # manage variations
 
 ResultsList = list()
-VariationName = ["Droop", "VSM", "Synchronverter"]
+VariationName = ["Droop", "VSM", "Synchronverter", "GridFollowing"]
 
 for varname in VariationName:
 
@@ -101,7 +101,7 @@ for varname in VariationName:
     freqdrop = app.GetFromStudyCase('IntCase')  # study case
     # Events = freqdrop.GetContents('*.EvtParam') contents of event
 
-    # execute results
+    # execute results and save as csv
     PFM.execComRes(freqdrop,ElmRes,f_name,
                    iopt_exp=6,
                    iopt_sep=0,
@@ -113,11 +113,10 @@ for varname in VariationName:
     ResultsList.append(Results)
 
 seriesnames = VariationName
-seriesnames.append('Node')
-columns = [1, 7]
+#seriesnames.append('Node')
+columns = [[1, 7],[1, 7],[1, 7],[4, 10]]
 DM.DFplot(ResultsList, 1, [2, 1], columns,
           xaxis=0,
-          fixplot=[8, 9],
           xlabel='Time (s)',
           ylabel=['Voltage (p.u.)', 'Frequency (Hz)'],
           seriesnames=seriesnames)
