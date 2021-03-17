@@ -1,8 +1,8 @@
 import sys
 import os
 import datetime
-import functions.PFmanager as PFM
-import functions.datamanager as DM
+import functions.convcompar.PFmanager as PFM
+import functions.convcompar.datamanager as DM
 # from conf.configs import *
 import functions.dynamisation
 #from conf.configs import confselect
