@@ -96,3 +96,12 @@ def CreateSimpleStabilityStudy(app, CreateScens):
     else:
 
         raise ValueError("Flag value not valid. Choose 1 or 0")
+
+def SetAttributesforFaultEvent(app, faultname, **kwargs):
+
+    faultcase = app.GetFromStudyCase('IntEvt')
+    event = faultcase.GetContents(faultname)[0]
+
+    for key, var in kwargs.items():
+        event.SetAttribute(key, var)
+
