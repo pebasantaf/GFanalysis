@@ -15,7 +15,7 @@ import powerfactory as pf
 
 #Initiate powerfactory. In case there is an error, will give the error code number
 try:
-    app = pf.GetApplicationExt(None, None, "/ini {path}".format(path= "I:\'05_Basanta Franco'\config.ini"))
+    app = pf.GetApplicationExt(None, None, r"/ini C:\Users\ge25bod\config.ini"☺)
     # ... some      calculations ...
 except pf.ExitError as error:
     print(error)

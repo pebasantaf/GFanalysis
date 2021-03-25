@@ -1,3 +1,6 @@
+import functions.dynamisation.ImportDynamicModels as idm
+import functions.dynamisation.SimBenchDynamisation as sbd
+
 def execComRes(IntCase, ElmRes, f_name, **kwargs):
 
     try:
@@ -105,3 +108,107 @@ def SetAttributesforFaultEvent(app, faultname, **kwargs):
     for key, var in kwargs.items():
         event.SetAttribute(key, var)
 
+def RunNSave(app, path, **kwargs):
+    # EXECUTING OF SIMULATION
+
+    ComInc = app.GetActiveStudyCase().GetContents('*.ComInc')[0]
+    ComSim = app.GetActiveStudyCase().GetContents('*.ComSim')[0]
+
+
+    # these functions optimize performnance
+    app.WriteChangesToDb()
+    app.SetWriteCacheEnabled(0)
+
+    # change simulation time
+
+    ComSim.SetAttribute(list(kwargs)[0], kwargs.get(list(kwargs)[0]))
+
+    # excecute simulation
+
+    ComInc.Execute() # execute initial conditions
+    ComSim.Execute() # execute simulation
+
+
+    # execute the object to export results
+
+    ElmRes = app.GetFromStudyCase("ElmRes") #results object
+
+    stucase = app.GetFromStudyCase('IntCase')  # study case
+
+    # execute results and save as csv
+    execComRes(stucase,ElmRes,path,
+                   iopt_exp=6,
+                   iopt_sep=0,
+                   dec_Sep='.')
+    app.SetWriteCacheEnabled(0)
+
+
+
+def ApplyConverters(app, activeproject, GFol_model, gentype, convtype):
+
+    ElmNet_base = app.GetProjectFolder('netdat').GetContents('*.ElmNet')[0]
+    ModelDict = {}
+    ModelDict, DERModel_params = idm.ImportDynamicsConverters(app, activeproject, GFol_model, app.GetProjectFolder('blk'),
+                                                              ModelDict, copy_VS=True)
+
+    for ElmGenstat in ElmNet_base.GetContents('*.ElmGenstat', 1):
+
+        if ElmGenstat.GetAttribute('cCategory') in gentype:
+
+            # delete current converter model
+
+            if ElmGenstat.GetAttribute('c_pmod') != None:
+
+                ElmGenstat.GetAttribute('c_pmod').Delete()
+
+            # Get Voltage level
+            u_ElmGenstat = ElmGenstat.GetAttribute('bus1').GetAttribute('cterm').GetAttribute('uknom')
+
+            # LV settings
+            if u_ElmGenstat < 10:
+                av_mode = 'constc'
+                PQLimit = 'VDE_AR_N_4105'
+
+                if ElmGenstat.GetAttribute('sgn') / 0.95 > 0.0046:
+                    cosn = 0.9
+                else:
+                    cosn = 0.95
+
+            # MV settings
+            elif u_ElmGenstat < 110:
+                av_mode = 'constc'
+                PQLimit = 'VDE_AR_N_4110'
+                cosn = 0.95
+
+            # HV settings
+            elif u_ElmGenstat >= 110:
+                av_mode = 'qvchar'
+                PQLimit = 'VDE_AR_N_4120_Var1'
+                cosn = 0.9
+
+            # Add converter type according to category
+
+            if convtype == 'GridFollowing':
+
+                sbd.AddConverterModell(activeproject, ElmGenstat, av_mode, cosn, ModelDict, DERModel_params, PCR=False, qv_ref=1,
+                                       PQLimit=PQLimit, IntFolder_PQLimitsLF=app.GetProjectFolder('mvar'))
+
+            elif convtype == 'Synchroverter':
+
+                sbd.AddGridformingConverter(ElmNet_base, ElmGenstat, app.GetGlobalLibrary(), 'Synchronverter', 'constc', cosn,
+                                        PQLimit=PQLimit, IntFolder_PQLimitsLF=app.GetProjectFolder('mvar'),
+                                        **{'Synchronverter control': {'Ta': 5}})
+
+            elif convtype == 'Droop Controlled Converter':
+
+                sbd.AddGridformingConverter(ElmNet_base, ElmGenstat, app.GetGlobalLibrary(), 'Droop Controlled Converter', 'constc', cosn,
+                                            PQLimit=PQLimit, IntFolder_PQLimitsLF=app.GetProjectFolder('mvar'))
+
+
+            elif convtype == 'Virtual Synchronous Machine':
+
+                sbd.AddGridformingConverter(ElmNet_base, ElmGenstat, app.GetGlobalLibrary(), 'Virtual Synchronous Machine', 'constc', cosn,
+                                        PQLimit=PQLimit, IntFolder_PQLimitsLF=app.GetProjectFolder('mvar'),
+                                        **{'Grid-forming control': {'Ta': 5}})
+
+    app.WriteChangesToDb()

@@ -52,3 +52,7 @@ def DFplot(DFlist, nfigs,nsplts,columns, **kwargs):
             plt.figure(n+1).axes[m].yaxis.grid()
 
     plt.show()
+
+    #if kwargs.get('savefigures') == True:
+
+
