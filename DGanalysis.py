@@ -3,7 +3,9 @@ import os
 import datetime
 import functions.convcompar.datamanager as DM
 import functions.convcompar.PFmanager as PFM
-from pathlib import Path
+from prettytable import PrettyTable
+
+
 sys.path.append(r'C:\Program Files\DIgSILENT\PowerFactory 2021 SP1\Python\3.8')
 
 import powerfactory as pf
@@ -25,66 +27,85 @@ GFol_model = r"I:\05_Basanta Franco\Masterarbeit_local\Models\DEAModel_20210209_
 app.ActivateProject(proj_name)
 proj = app.GetActiveProject()
 
-gentype = 'Wind'
-convtype = 'GridFollowing'
+# RESET
+
+Reset = False
+
+if Reset:
+
+    gentype = ['Wind', 'Photovoltaic']
+    convtype = 'GridFollowing'
+    print('Reseting Power Factory grid to initial state')
+    PFM.ApplyConverters(app, proj, GFol_model, gentype, convtype, convname='LV2')
+    quit()
+
+# INPUT
+
+gentype = [['Wind'], ['Wind', 'Photovoltaic']]
+convtype = 'Synchronverter'
 
 # Mode: 0-Change Converters; 1-Execute simulation; 2-Import data; 3-Plot
 
-Modes = 1
+Modes = [1, 0, 1, 0, 1]
 filemode = 'Create' #filemodes: Create or Read
+folder = datetime.now().strftime("\\%d.%m.%Y_%H-%M-%S") + '_DG\\'
+fileending = [".csv", "-GF-wind.csv", "-GF-wind-solar.csv"]
 
-# results input
 
-if filemode == 'Create':
+g = 0  # generation type counter
+c = 0  # converter type counter
+f = 0  # file counter
 
-    folder = os.getcwd() + "\\Results" + datetime.datetime.now().strftime("\\%d.%m.%Y_%H-%M-%S\\")
-    os.mkdir(folder)
-    path = folder + proj_name + "-GF-wind.csv"
+ResultsList = list()
 
-elif filemode == 'Read':
+for i in range(len(Modes)):
 
-    path = sorted(Path(os.getcwd()+'/Results').iterdir(), key=os.path.getmtime)[-1].__str__() #reads last file. This can be modified
+    if Modes[i] == 0:
 
-# apply converters and select what to execute
+        print('Applying ' + convtype +' for '+ str(gentype[g]) + ' generators')
 
-for Mode in Modes:
+        PFM.ApplyConverters(app, proj, GFol_model, gentype[g], convtype, convname='LV2')
 
-    if Mode == 0:
+        print(convtype + ' applied')
 
-        PFM.ApplyConverters(app, proj, GFol_model, gentype, convtype)
+        if g + 1 < len(gentype):
+            g += 1
 
-    elif Mode == 1:
+        if c + 1 < len(convtype):
+            c += 1
+
+    elif Modes[i] == 1:
+
+        path = DM.ReadorCreatePath('Create', folder=folder, filename=proj_name+fileending[f])
+        f += 1
+
+        print('Executing simulation and storing results')
 
         # excute and export
-        PFM.RunNSave(app, path, tstop=1)
+        PFM.RunNSave(app, 1, tstop=1, path=path)
+        print('Simulation finished')
 
-    elif Mode == 2:
+    elif Modes[i] == 2:
+
+        path = DM.ReadorCreatePath('Read', readmode='lastfile')
 
         # import results
-        Results = DM.importData(path).astype(float)
+        for direc in os.listdir(path):
 
-    elif Mode == 3:
+            Results = DM.importData(path+direc).astype(float)
 
-        # select plots
-        voltage_plot = [s for s in list(Results.columns) if 'u1' in s]
-        voltage_id = [i for i in range(len(list(Results.columns))) if list(Results.columns)[i] in voltage_plot]
+            ResultsList.append(Results)
 
-        frequency_plot = [s for s in list(Results.columns) if 'Electrical Frequency' in s]
-        frequency_id = [i for i in range(len(list(Results.columns))) if list(Results.columns)[i] in frequency_plot]
-
-        activepower_plot = [s for s in list(Results.columns) if 'Total Active Power' in s]
-        activepower_id = [i for i in range(len(list(Results.columns))) if list(Results.columns)[i] in activepower_plot]
-
+    elif Modes[i] == 3:
         # plot
 
-        for id in frequency_id:
-            DM.DFplot(Results, 1, [1, 1], columns,
-                      xaxis=0,
-                      xlabel='Time (s)',
-                      ylabel=['Voltage (p.u.)', 'Frequency (Hz)'],
-                      fixplot=[25, 31],
-                      seriesnames=seriesnames,
-                      savefigures=True)
+        DM.DFplot(ResultsList, len(columns), [1, 1], columns,
+                  xaxis=0,
+                  xlabel='Time (s)',
+                  savefigures=False,
+                  ylabel=list(map(list(ResultsList[0].columns).__getitem__, columns)),
+                  seriesnames=['0GF', 'WindGF', 'WindLV2SolarGF']
+                  )
 
     else:
         raise Exception('Wrong value')

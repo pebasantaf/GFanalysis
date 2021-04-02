@@ -108,7 +108,7 @@ def SetAttributesforFaultEvent(app, faultname, **kwargs):
     for key, var in kwargs.items():
         event.SetAttribute(key, var)
 
-def RunNSave(app, path, **kwargs):
+def RunNSave(app, saveResults, **kwargs):
     # EXECUTING OF SIMULATION
 
     ComInc = app.GetActiveStudyCase().GetContents('*.ComInc')[0]
@@ -136,79 +136,96 @@ def RunNSave(app, path, **kwargs):
     stucase = app.GetFromStudyCase('IntCase')  # study case
 
     # execute results and save as csv
-    execComRes(stucase,ElmRes,path,
-                   iopt_exp=6,
-                   iopt_sep=0,
-                   dec_Sep='.')
-    app.SetWriteCacheEnabled(0)
+
+    if saveResults:
+        execComRes(stucase,ElmRes,kwargs.get('path'),
+                       iopt_exp=6,
+                       iopt_sep=0,
+                       dec_Sep='.')
+        app.SetWriteCacheEnabled(0)
 
 
 
-def ApplyConverters(app, activeproject, GFol_model, gentype, convtype):
+def ApplyConverters(app, activeproject, GFol_model, gentype, convtype, **kwargs):
 
     ElmNet_base = app.GetProjectFolder('netdat').GetContents('*.ElmNet')[0]
     ModelDict = {}
     ModelDict, DERModel_params = idm.ImportDynamicsConverters(app, activeproject, GFol_model, app.GetProjectFolder('blk'),
                                                               ModelDict, copy_VS=True)
 
-    for ElmGenstat in ElmNet_base.GetContents('*.ElmGenstat', 1):
+
+    for ElmGenstat in ElmNet_base.GetContents('*.ElmGenstat', 1): # for every grid element
 
         if ElmGenstat.GetAttribute('cCategory') in gentype:
 
-            # delete current converter model
+            if ElmGenstat.GetAttribute('cCategory') == 'Photovoltaic':
 
-            if ElmGenstat.GetAttribute('c_pmod') != None:
+                if kwargs.get('convname') in ElmGenstat.GetAttribute('loc_name'):
 
-                ElmGenstat.GetAttribute('c_pmod').Delete()
-
-            # Get Voltage level
-            u_ElmGenstat = ElmGenstat.GetAttribute('bus1').GetAttribute('cterm').GetAttribute('uknom')
-
-            # LV settings
-            if u_ElmGenstat < 10:
-                av_mode = 'constc'
-                PQLimit = 'VDE_AR_N_4105'
-
-                if ElmGenstat.GetAttribute('sgn') / 0.95 > 0.0046:
-                    cosn = 0.9
+                    pass
                 else:
-                    cosn = 0.95
 
-            # MV settings
-            elif u_ElmGenstat < 110:
-                av_mode = 'constc'
-                PQLimit = 'VDE_AR_N_4110'
+                    continue
+
+            pass
+        else:
+
+            continue
+
+        # delete current converter model
+
+        if ElmGenstat.GetAttribute('c_pmod') != None:
+
+            ElmGenstat.GetAttribute('c_pmod').Delete()
+
+        # Get Voltage level
+        u_ElmGenstat = ElmGenstat.GetAttribute('bus1').GetAttribute('cterm').GetAttribute('uknom')
+
+        # LV settings
+        if u_ElmGenstat < 10:
+            av_mode = 'constc'
+            PQLimit = 'VDE_AR_N_4105'
+
+            if ElmGenstat.GetAttribute('sgn') / 0.95 > 0.0046:
+                cosn = 0.9
+            else:
                 cosn = 0.95
 
-            # HV settings
-            elif u_ElmGenstat >= 110:
-                av_mode = 'qvchar'
-                PQLimit = 'VDE_AR_N_4120_Var1'
-                cosn = 0.9
+        # MV settings
+        elif u_ElmGenstat < 110:
+            av_mode = 'constc'
+            PQLimit = 'VDE_AR_N_4110'
+            cosn = 0.95
 
-            # Add converter type according to category
+        # HV settings
+        elif u_ElmGenstat >= 110:
+            av_mode = 'qvchar'
+            PQLimit = 'VDE_AR_N_4120_Var1'
+            cosn = 0.9
 
-            if convtype == 'GridFollowing':
+        # Add converter type according to category
 
-                sbd.AddConverterModell(activeproject, ElmGenstat, av_mode, cosn, ModelDict, DERModel_params, PCR=False, qv_ref=1,
-                                       PQLimit=PQLimit, IntFolder_PQLimitsLF=app.GetProjectFolder('mvar'))
+        if convtype == 'GridFollowing':
 
-            elif convtype == 'Synchroverter':
+            sbd.AddConverterModell(activeproject, ElmGenstat, av_mode, cosn, ModelDict, DERModel_params, PCR=False, qv_ref=1,
+                                   PQLimit=PQLimit, IntFolder_PQLimitsLF=app.GetProjectFolder('mvar'))
 
-                sbd.AddGridformingConverter(ElmNet_base, ElmGenstat, app.GetGlobalLibrary(), 'Synchronverter', 'constc', cosn,
-                                        PQLimit=PQLimit, IntFolder_PQLimitsLF=app.GetProjectFolder('mvar'),
-                                        **{'Synchronverter control': {'Ta': 5}})
+        elif convtype == 'Synchronverter':
 
-            elif convtype == 'Droop Controlled Converter':
+            sbd.AddGridformingConverter(ElmNet_base, ElmGenstat, app.GetGlobalLibrary(), 'Synchronverter', 'constc', cosn,
+                                    PQLimit=PQLimit, IntFolder_PQLimitsLF=app.GetProjectFolder('mvar'),
+                                    **{'Synchronverter control': {'Ta': 5}})
 
-                sbd.AddGridformingConverter(ElmNet_base, ElmGenstat, app.GetGlobalLibrary(), 'Droop Controlled Converter', 'constc', cosn,
-                                            PQLimit=PQLimit, IntFolder_PQLimitsLF=app.GetProjectFolder('mvar'))
+        elif convtype == 'Droop Controlled Converter':
+
+            sbd.AddGridformingConverter(ElmNet_base, ElmGenstat, app.GetGlobalLibrary(), 'Droop Controlled Converter', 'constc', cosn,
+                                        PQLimit=PQLimit, IntFolder_PQLimitsLF=app.GetProjectFolder('mvar'))
 
 
-            elif convtype == 'Virtual Synchronous Machine':
+        elif convtype == 'Virtual Synchronous Machine':
 
-                sbd.AddGridformingConverter(ElmNet_base, ElmGenstat, app.GetGlobalLibrary(), 'Virtual Synchronous Machine', 'constc', cosn,
-                                        PQLimit=PQLimit, IntFolder_PQLimitsLF=app.GetProjectFolder('mvar'),
-                                        **{'Grid-forming control': {'Ta': 5}})
+            sbd.AddGridformingConverter(ElmNet_base, ElmGenstat, app.GetGlobalLibrary(), 'Virtual Synchronous Machine', 'constc', cosn,
+                                    PQLimit=PQLimit, IntFolder_PQLimitsLF=app.GetProjectFolder('mvar'),
+                                    **{'Grid-forming control': {'Ta': 5}})
 
     app.WriteChangesToDb()
