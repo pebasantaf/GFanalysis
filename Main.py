@@ -1,8 +1,8 @@
 import sys
 import os
 import datetime
-import functions.PFmanager as PFM
-import functions.datamanager as DM
+import functions.convcompar.PFmanager as PFM
+import functions.convcompar.datamanager as DM
 # from conf.configs import *
 import functions.dynamisation
 #from conf.configs import confselect
@@ -15,7 +15,7 @@ import powerfactory as pf
 
 #Initiate powerfactory. In case there is an error, will give the error code number
 try:
-    app = pf.GetApplicationExt(None, None, "/ini {path}".format(path= "I:\'05_Basanta Franco'\config.ini"))
+    app = pf.GetApplicationExt(None, None, r"/ini C:\Users\ge25bod\config.ini")
     # ... some      calculations ...
 except pf.ExitError as error:
     print(error)
@@ -45,9 +45,9 @@ PFM.CreateSimpleStabilityStudy(app, 0)
 
 ResultsList = list()
 
-conf = confselect('freqramp')
+#conf = confselect('freqramp')
 
-StudyCase = 'Frequency Ramp'
+StudyCase = 'Frequency Ramp' # Frequency Ramp, Voltage Step, Voltage Ramp
 VariationName = ["Droop", "VSM", "Synchronverter", "GridFollowing"]
 
 Eventname = 'fslope'
@@ -59,17 +59,14 @@ inertiavalues = [3]
 SelCase = app.GetProjectFolder('study').GetContents(StudyCase)[0]
 SelCase.Activate()
 
+NetData = app.GetProjectFolder('netdat')
+Net = NetData.GetContents('110KV.ElmNet')
+
+newfolder = datetime.datetime.now().strftime("\\%d.%m.%Y_%H-%M-%S") + '_CC\\'
+
 for varname in VariationName:
 
-    if VariationName.index(varname) == 0:
-        Resultspath = os.getcwd() + "\\Results"
-        newfolder = datetime.datetime.now().strftime("\\%d.%m.%Y_%H-%M-%S\\")
-        os.mkdir(Resultspath + newfolder)
-
     Variation = PFM.ActivateVariation(varname, app)
-
-    NetData = app.GetProjectFolder('netdat')
-    Net = NetData.GetContents('110KV.ElmNet')
 
     Converter = Net[0].GetContents(varname + 'Converter')[0]
     Frame = Converter.GetAttribute('c_pmod')
@@ -98,39 +95,14 @@ for varname in VariationName:
                 ElmParams[id] = inval
                 DSLobj.SetAttribute('params', ElmParams)
 
+            path = DM.ReadorCreatePath('Create',folder=newfolder, filename= "/results{controller}fault{faults}inertia{inertia}.csv".format(controller=varname, faults=faultvalues,inertia=inval))
+
             # EXECUTING OF SIMULATION
+            PFM.RunNSave(app, True, tstop=10, path=path)
 
-            ComInc = app.GetActiveStudyCase().GetContents('*.ComInc')[0]
-            ComSim = app.GetActiveStudyCase().GetContents('*.ComSim')[0]
-
-
-            # these functions optimize performnance
-            app.WriteChangesToDb()
-            app.SetWriteCacheEnabled(0)
-
-            # excecute simulation
-
-            ComInc.Execute() # execute initial conditions
-            ComSim.Execute() # execute simulation
-
-
-            # execute the object to export results
-
-
-            f_name = Resultspath + newfolder + "/results{controller}fault{faults}inertia{inertia}.csv".format(controller=varname, faults=faultvalues,inertia=inval)
-
-            ElmRes = app.GetFromStudyCase("ElmRes") #results object
-
-            freqdrop = app.GetFromStudyCase('IntCase')  # study case
-
-            # execute results and save as csv
-            PFM.execComRes(freqdrop,ElmRes,f_name,
-                           iopt_exp=6,
-                           iopt_sep=0,
-                           dec_Sep='.')
 
             # import results
-            Results = DM.importData(f_name).astype(float)
+            Results = DM.importData(path).astype(float)
 
             ResultsList.append(Results)
 
@@ -140,7 +112,7 @@ seriesnames = VariationName
 seriesnames.append('Voltage Source')
 columns = [[1,7],[18, 24],[18, 24],[1, 7]]
 #columns = [[18,24],[18, 24],[18, 24]]
-DM.DFplot(ResultsList, 1, [2, 1], columns,
+DM.DFplot(ResultsList, 1, [1, 1], columns,
           xaxis=0,
           xlabel='Time (s)',
           ylabel=['Voltage (p.u.)', 'Frequency (Hz)'],
