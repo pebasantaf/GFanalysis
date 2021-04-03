@@ -48,11 +48,12 @@ ResultsList = list()
 #conf = confselect('freqramp')
 
 StudyCase = 'Frequency Ramp' # Frequency Ramp, Voltage Step, Voltage Ramp
-VariationName = ["Droop", "VSM", "Synchronverter", "GridFollowing"]
+VariationName = ["Synchronverter"]
 
-Eventname = 'fslope'
+Eventname = 'fslope' # Frequency ramp:fslope; Voltage step:vdip; Voltage ramp:
 faultvalues = ["0,001"]
-inertiavalues = [3]
+inertiavalues = [3,5,7,10]
+Modes = [0, 1, 2] # Modes: 0-Run; 1-Import; 2-Plot
 
 # activate study case
 
@@ -63,60 +64,69 @@ NetData = app.GetProjectFolder('netdat')
 Net = NetData.GetContents('110KV.ElmNet')
 
 newfolder = datetime.datetime.now().strftime("\\%d.%m.%Y_%H-%M-%S") + '_CC\\'
+for Mode in Modes:
 
-for varname in VariationName:
+    if Mode == 0:
+        for varname in VariationName:
 
-    Variation = PFM.ActivateVariation(varname, app)
+            Variation = PFM.ActivateVariation(varname, app)
 
-    Converter = Net[0].GetContents(varname + 'Converter')[0]
-    Frame = Converter.GetAttribute('c_pmod')
+            Converter = Net[0].GetContents('*.ElmGenStat')[0]
+            Frame = Converter.GetAttribute('c_pmod')
 
-    if varname == "VSM":
-        DSLobj = Frame.GetContents('Virtual Synchronous Machine')[0]
+            for val in faultvalues:
 
-    elif varname == "Synchronverter":
-        DSLobj = Frame.GetContents('Synchronverter')[0]
+                # apply desired fault values
+                PFM.SetAttributesforFaultEvent(app, Eventname, value=val)
 
-    if 'DSLobj' in locals():
-        id = DSLobj.parnam[0].split(',').index('Ta')
-        ElmParams = DSLobj.params
+                # apply desired inertia values
+                for inval in inertiavalues:
 
+                    if varname == 'Synchronverter':
 
+                        print('Applying inertia value ' + str(inval))
+                        Frame.GetAttribute('Synchronverter control').SetAttribute('Ta', inval)
 
-    for val in faultvalues:
+                    elif varname == 'VSM':
 
-        # apply desired fault values
-        PFM.SetAttributesforFaultEvent(app, Eventname, value=val)
+                        print('Applying inertia value ' + str(inval))
+                        Frame.GetAttribute('Grid-forming control').SetAttribute('Ta', inval)
 
-        # apply desired inertia values
-        for inval in inertiavalues:
+                    else:
 
-            if 'DSLobj' in locals():
-                ElmParams[id] = inval
-                DSLobj.SetAttribute('params', ElmParams)
+                        print('Converter has no inertia')
 
-            path = DM.ReadorCreatePath('Create',folder=newfolder, filename= "/results{controller}fault{faults}inertia{inertia}.csv".format(controller=varname, faults=faultvalues,inertia=inval))
+                    path1 = DM.ReadorCreatePath('Create', folder=newfolder, filename= "results{controller}fault{faults}inertia{inertia}.csv".format(controller=varname, faults=faultvalues,inertia=inval))
 
-            # EXECUTING OF SIMULATION
-            PFM.RunNSave(app, True, tstop=10, path=path)
+                    # EXECUTING SIMULATION
+                    PFM.RunNSave(app, True, tstop=10, path=path1)
 
+    elif Mode == 1:
 
-            # import results
-            Results = DM.importData(path).astype(float)
+        path2 = DM.ReadorCreatePath('Read', readmode='lastfile')
+        # import results
+        for direc in os.listdir(path):
+            Results = DM.importData(path + direc).astype(float)
 
             ResultsList.append(Results)
 
-# print results
-#seriesnames = list(map(str,inertiavalues))
-seriesnames = VariationName
-seriesnames.append('Voltage Source')
-columns = [[1,7],[18, 24],[18, 24],[1, 7]]
-#columns = [[18,24],[18, 24],[18, 24]]
-DM.DFplot(ResultsList, 1, [1, 1], columns,
-          xaxis=0,
-          xlabel='Time (s)',
-          ylabel=['Voltage (p.u.)', 'Frequency (Hz)'],
-          fixplot=[25 ,31],
-          seriesnames=seriesnames)
+
+
+    elif Mode == 2:
+
+        # print results
+        seriesnames = list(map(str, inertiavalues))
+        #seriesnames = VariationName
+        #seriesnames.append('Voltage Source')
+        #columns = [[1,7],[18, 24],[18, 24],[1, 7]]
+        columns = [[18,24],[18, 24],[18, 24]]
+        DM.DFplot(ResultsList, [1, 1],
+                  xaxis=0,
+                  xlabel='Time (s)',
+                  ylabel=['Voltage (p.u.)', 'Frequency (Hz)'],
+                  fixplot=[25 ,31],
+                  seriesnames=seriesnames,
+                  savefigures=True,
+                  figurefolder='converters_comparison/'+StudyCase+'/')
 
 app.PostCommand("exit")

@@ -30,20 +30,25 @@ def DFplot(DFlist, nsplts, **kwargs):
     # nsplts: list with two integers indicating rows and colums of subplots
     # columns: columns to plot
 
-    table = PrettyTable()
-    table.add_column('id', list(range(0, len(list(DFlist[0].columns)))))
-    table.add_column('Variable', list(DFlist[0].columns))
-    print(table)
+    if 'columns' not in kwargs.items():
+        table = PrettyTable()
+        table.add_column('id', list(range(0, len(list(DFlist[0].columns)))))
+        table.add_column('Variable', list(DFlist[0].columns))
+        print(table)
 
-    columns = input('Enter column id (format: x, x, x): ')
-    columns = columns.split(',')
-    columns = list(map(int, columns))
+        columns = input('Enter column id (format: x, x, x): ')
+        columns = columns.split(',')
+        columns = list(map(int, columns))
+
+    else:
+        columns = kwargs.get('columns')
 
     if 'nfigs' not in kwargs.items():
         nfigs = len(columns)
 
     else:
         nfigs = kwargs.get('nfigs')
+
 
     for n in range(nfigs):
         plt.figure(n+1)
@@ -79,7 +84,7 @@ def DFplot(DFlist, nsplts, **kwargs):
 
             if kwargs.get('savefigures') == True:
 
-                plt.savefig(r'I:\05_Basanta Franco\Masterarbeit_local\images\grid_comparison/' + kwargs.get('ylabel')[n] + '.png')
+                plt.savefig(r'I:\05_Basanta Franco\Masterarbeit_local\images/'+ kwargs.get('figurefolder') + kwargs.get('ylabel')[n] + '.png')
 
             elif kwargs.get('savefigures') == False:
 
@@ -97,15 +102,19 @@ def ReadorCreatePath(filemode, **kwargs):
 
         path = directory + kwargs.get('filename')
 
+        return path
+
     elif filemode == 'Read':
         if 'readmode' in kwargs == 'lastfile':
 
             path = sorted(Path(os.getcwd() + '/Results').iterdir(), key=os.path.getmtime)[
                    -1].__str__() + '\\'  # reads last file. This can be modified
+            return path
 
         elif 'readmode' in kwargs == 'userfile':
 
             path = os.getcwd() + '/Results' + kwargs.get('folder') + kwargs.get('filename')
 
+            return path
 
-    return path
+
