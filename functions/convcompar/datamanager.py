@@ -1,4 +1,5 @@
 import os
+import sys
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -30,60 +31,105 @@ def DFplot(DFlist, nsplts, **kwargs):
     # nsplts: list with two integers indicating rows and colums of subplots
     # columns: columns to plot
 
-    table = PrettyTable()
-    table.add_column('id', list(range(0, len(list(DFlist[0].columns)))))
-    table.add_column('Variable', list(DFlist[0].columns))
-    print(table)
+    moreplots = True
 
-    columns = input('Enter column id (format: x, x, x): ')
-    columns = columns.split(',')
-    columns = list(map(int, columns))
+    while moreplots:
 
-    if 'nfigs' not in kwargs.items():
-        nfigs = len(columns)
+        table = PrettyTable()
+        table.add_column('id', list(range(0, len(list(DFlist[0].columns)))))
+        table.add_column('Variable', list(DFlist[0].columns))
+        print(table)
 
-    else:
-        nfigs = kwargs.get('nfigs')
+        if 'columns' not in kwargs.items() or kwargs.get('columns') == None: #if variable columns is not a kwarg, ask for input
 
-    for n in range(nfigs):
-        plt.figure(n+1)
+            columns = input('Enter column id (format: x, x, x): ')
+            columns = columns.split(',')
+            columns = list(map(int, columns))
 
-        for m in range(np.prod(nsplts)):
-            plt.subplot(nsplts[0], nsplts[1], m+1)
-            c = 0
+        else:
+            columns = kwargs.get('columns')
 
-            if 'fixplot' in kwargs:
-                plt.figure(n + 1).axes[m].plot(DFlist[0].iloc[:, [kwargs.get('xaxis')]], DFlist[0].iloc[:, [kwargs.get('fixplot')[m]]],
-                                               label=kwargs.get('seriesnames')[-1])
+        # if amount of figures is not given, just take the number of column
+        if 'nfigs' not in kwargs.items():
+            nfigs = len(columns)
+
+        else:
+            nfigs = kwargs.get('nfigs')
+
+        variables = DFlist[0].columns
+
+        # create reference strings. This is useful as sometimes equivalent columns of data from different converters will be in different positions in the dataframes
+
+        reflist = list()
+
+        for col in columns:
+
+            reference = 'Converter' + '|' + DFlist[0].columns[col].split('|')[1]
+            reflist.append(reference)
+
+        # generate figurs, plots and subplots
+        for n in range(nfigs):
+
+            plt.figure(n+1)
+
+            for m in range(np.prod(nsplts)):
+                plt.subplot(nsplts[0], nsplts[1], m+1)
+
+                # a plot that is common for all DF that only needs to be plotted once
+                if kwargs.get('fixplot') == True:
+
+                    fixplotcol = input('Enter column id for reference variable (format: x, x, x): ')
+                    fixplotcol = fixplotcol.split(',')
+                    fixplotcol = list(map(int, fixplotcol))
+
+                    plt.figure(n + 1).axes[m].plot(DFlist[0].iloc[:, [kwargs.get('xaxis')]], DFlist[0].iloc[:, fixplotcol[m]],
+                                                   label=kwargs.get('seriesnames')[-1], linewidth=0.5)
+
+                #dataframe-dependent plots
+                for c in range(len(DFlist)):
+
+                    targetcol = [s for s in DFlist[c].columns if reflist[n] in s]
+                    plt.figure(n+1).axes[m].plot(DFlist[c].iloc[:, [kwargs.get('xaxis')]], DFlist[c].loc[:, targetcol], label=kwargs.get('seriesnames')[c], linewidth=0.8)
 
 
-            #dataframe-dependent plots
-            for DF in DFlist:
+                # set up axis labels and legend
+                plt.figure(n+1).axes[m].set_xlabel(kwargs.get('xlabel'))
 
-                plt.figure(n+1).axes[m].plot(DF.iloc[:, [kwargs.get('xaxis')]], DF.iloc[:, [columns[n]]], label=kwargs.get('seriesnames')[c])
+                if 'ylabel' in kwargs.items():
 
-                c += 1
+                    plt.figure(n+1).axes[m].set_ylabel(kwargs.get('ylabel')[n].split('|')[1])
 
-            plt.figure(n+1).axes[m].set_xlabel(kwargs.get('xlabel'))
-            plt.figure(n+1).axes[m].set_ylabel(kwargs.get('ylabel')[n].split('|')[1])
-            plt.figure(n+1).axes[m].ticklabel_format(useOffset=False)
-            plt.figure(n+1).axes[m].legend()
+                else:
+
+                    plt.figure(n + 1).axes[m].set_ylabel(variables[columns[n]].split('|')[1])
+
+                plt.figure(n+1).axes[m].ticklabel_format(useOffset=False)
+                plt.figure(n+1).axes[m].legend()
+                plt.figure(n+1).axes[m].yaxis.grid()
+
+            # save images in folder
+
+            if 'savefigures' in kwargs:
+
+                if kwargs.get('savefigures') == True:
+                    figure = plt.gcf()
+                    figure.set_size_inches(14, 8)
+                    plt.savefig(r'I:\05_Basanta Franco\Masterarbeit_local\images/'+ kwargs.get('figurefolder') + variables[columns[n]].replace('|', '-') + '.png', dpi=300)
+
+                elif kwargs.get('savefigures') == False:
+
+                    pass
+
+            plt.show()
+
+        moreplots = input('Plot more variables?')
+        moreplots = moreplots == 'True'
+
+        if moreplots != True and moreplots != False:
+
+            sys.exit('Answer can only be boolean')
 
 
-
-            plt.figure(n+1).axes[m].yaxis.grid()
-
-        plt.show()
-
-        if 'savefigures' in kwargs:
-
-            if kwargs.get('savefigures') == True:
-
-                plt.savefig(r'I:\05_Basanta Franco\Masterarbeit_local\images\grid_comparison/' + kwargs.get('ylabel')[n] + '.png')
-
-            elif kwargs.get('savefigures') == False:
-
-                pass
 
 
 def ReadorCreatePath(filemode, **kwargs):
@@ -97,15 +143,19 @@ def ReadorCreatePath(filemode, **kwargs):
 
         path = directory + kwargs.get('filename')
 
+        return path
+
     elif filemode == 'Read':
-        if 'readmode' in kwargs == 'lastfile':
+        if kwargs.get('readmode') == 'lastfile':
 
             path = sorted(Path(os.getcwd() + '/Results').iterdir(), key=os.path.getmtime)[
                    -1].__str__() + '\\'  # reads last file. This can be modified
+            return path
 
-        elif 'readmode' in kwargs == 'userfile':
+        elif kwargs.get('readmode') == 'userfile':
 
             path = os.getcwd() + '/Results' + kwargs.get('folder') + kwargs.get('filename')
 
+            return path
 
-    return path
+

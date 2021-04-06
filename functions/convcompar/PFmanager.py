@@ -1,3 +1,4 @@
+import sys
 import functions.dynamisation.ImportDynamicModels as idm
 import functions.dynamisation.SimBenchDynamisation as sbd
 
@@ -100,6 +101,7 @@ def CreateSimpleStabilityStudy(app, CreateScens):
 
         raise ValueError("Flag value not valid. Choose 1 or 0")
 
+
 def SetAttributesforFaultEvent(app, faultname, **kwargs):
 
     faultcase = app.GetFromStudyCase('IntEvt')
@@ -107,6 +109,31 @@ def SetAttributesforFaultEvent(app, faultname, **kwargs):
 
     for key, var in kwargs.items():
         event.SetAttribute(key, var)
+
+
+def SetFaulEvent(app,event, tinit, tend, value):
+
+    if event == 'Frequency Ramp':
+
+        SetAttributesforFaultEvent(app,'ftime',value=str(tend), time=tinit)
+        SetAttributesforFaultEvent(app, 'fslope', value=str(value), time=tinit)
+
+    elif event == 'Voltage Step':
+
+        SetAttributesforFaultEvent(app, 'vtime', value=str(tend), time=tinit)
+        SetAttributesforFaultEvent(app, 'vdip', value=str(value), time=tinit)
+
+    elif event == 'Voltage Ramp':
+
+        SetAttributesforFaultEvent(app, 'tinic', value=str(tinit), time=tinit)
+        SetAttributesforFaultEvent(app, 'Vldip', value=str(value), time=tinit)
+        SetAttributesforFaultEvent(app, 'tramp', value=str(tend), time=tinit)
+        SetAttributesforFaultEvent(app, 'tdip', value=str(tend-tinit), time=tinit)
+
+    else:
+
+        sys.exit('Wrong event name')
+
 
 def RunNSave(app, saveResults, **kwargs):
     # EXECUTING OF SIMULATION

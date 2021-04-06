@@ -99,7 +99,7 @@ for i in range(len(Modes)):
     elif Modes[i] == 3:
         # plot
 
-        DM.DFplot(ResultsList, len(columns), [1, 1], columns,
+        DM.DFplot(ResultsList, [1, 1],
                   xaxis=0,
                   xlabel='Time (s)',
                   savefigures=False,
