@@ -3,7 +3,7 @@ import os
 import datetime
 import functions.convcompar.PFmanager as PFM
 import functions.convcompar.datamanager as DM
-# from conf.configs import *
+from conf.configs import confselect
 import functions.dynamisation
 #from conf.configs import confselect
 from pprint import pprint
@@ -38,49 +38,42 @@ project = app.GetActiveProject()
 
 PFM.CreateSimpleStabilityStudy(app, 0)
 
-
-#get project folder
-
 # manage variations
 
 ResultsList = list()
 
-#conf = confselect('freqramp')
+conf = confselect('freqramp')
 
-StudyCase = 'Frequency Ramp' # Frequency Ramp, Voltage Step, Voltage Ramp
-VariationName = ["Synchronverter"]
-
-Eventname = 'fslope' # Frequency ramp:fslope; Voltage step:vdip; Voltage ramp:
-faultvalues = ["0,001"]
-inertiavalues = [3,5,7,10]
-Modes = [0, 1, 2] # Modes: 0-Run; 1-Import; 2-Plot
+# Frequency Ramp, Voltage Step, Voltage Ramp
+Modes = [0,1]  # Modes: 0-Run; 1-Plot
 
 # activate study case
 
-SelCase = app.GetProjectFolder('study').GetContents(StudyCase)[0]
+SelCase = app.GetProjectFolder('study').GetContents(conf.get('StudyCase'))[0]
 SelCase.Activate()
 
 NetData = app.GetProjectFolder('netdat')
 Net = NetData.GetContents('110KV.ElmNet')
 
 newfolder = datetime.datetime.now().strftime("\\%d.%m.%Y_%H-%M-%S") + '_CC\\'
+
 for Mode in Modes:
 
     if Mode == 0:
-        for varname in VariationName:
+        for varname in conf.get('Variation Name'):
 
             Variation = PFM.ActivateVariation(varname, app)
 
             Converter = Net[0].GetContents('*.ElmGenStat')[0]
             Frame = Converter.GetAttribute('c_pmod')
 
-            for val in faultvalues:
+            for val in conf.get('faultvalues'):
 
                 # apply desired fault values
-                PFM.SetAttributesforFaultEvent(app, Eventname, value=val)
+                PFM.SetFaulEvent(app, conf.get('StudyCase'), conf.get('tinit'), conf.get('tend'), val)
 
                 # apply desired inertia values
-                for inval in inertiavalues:
+                for inval in conf.get('inertiavalues'):
 
                     if varname == 'Synchronverter':
 
@@ -96,37 +89,30 @@ for Mode in Modes:
 
                         print('Converter has no inertia')
 
-                    path1 = DM.ReadorCreatePath('Create', folder=newfolder, filename= "results{controller}fault{faults}inertia{inertia}.csv".format(controller=varname, faults=faultvalues,inertia=inval))
+                    path = DM.ReadorCreatePath('Create', folder=newfolder, filename=str(conf.get('Variation Name').index(varname) + 1) +
+                                                                                    "results{controller}fault{faults}inertia{inertia}.csv".format(controller=varname, faults=conf.get('faultvalues'),inertia=inval))
 
                     # EXECUTING SIMULATION
-                    PFM.RunNSave(app, True, tstop=10, path=path1)
+                    print('Executing simulation')
+                    PFM.RunNSave(app, True, tstop=15, path=path)
 
     elif Mode == 1:
 
-        path2 = DM.ReadorCreatePath('Read', readmode='lastfile')
+        path = DM.ReadorCreatePath('Read', readmode='lastfile')
         # import results
         for direc in os.listdir(path):
             Results = DM.importData(path + direc).astype(float)
 
             ResultsList.append(Results)
 
-
-
-    elif Mode == 2:
-
         # print results
-        seriesnames = list(map(str, inertiavalues))
-        #seriesnames = VariationName
-        #seriesnames.append('Voltage Source')
-        #columns = [[1,7],[18, 24],[18, 24],[1, 7]]
-        columns = [[18,24],[18, 24],[18, 24]]
+
         DM.DFplot(ResultsList, [1, 1],
-                  xaxis=0,
+                  xaxis=conf.get('xaxis'),
                   xlabel='Time (s)',
-                  ylabel=['Voltage (p.u.)', 'Frequency (Hz)'],
-                  fixplot=[25 ,31],
-                  seriesnames=seriesnames,
-                  savefigures=True,
-                  figurefolder='converters_comparison/'+StudyCase+'/')
+                  seriesnames=conf.get('seriesnames'),
+                  savefigures=conf.get('savefigures'),
+                  fixplot=conf.get('fixplot'),
+                  figurefolder=conf.get('figurefolder'))
 
 app.PostCommand("exit")
