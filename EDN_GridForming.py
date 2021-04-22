@@ -34,6 +34,10 @@ grid_dirlist = ['1-MVLV-rural-all-0-sw']
 path_export = os.path.join(r"I:\05_Basanta Franco\Masterarbeit_local\Results", f'{datetime.now().strftime("%Y%m%d-%H-%M-%S")}')
 os.mkdir(path_export)
 
+#available scenarios
+operation_scenarios = ['lPV.IntScenario', 'hL.IntScenario', 'hPV.IntScenario', 'hW.IntScenario', 'lPV.IntScenario',
+                           'lW.IntScenario']
+
 cosgini = 1
 
 # Iterate over all pfd files
@@ -111,15 +115,28 @@ for grid_dir in grid_dirlist:
 
         # Add converter type according to category
         if ElmGenstat.GetAttribute('cCategory') in GF_type_list:
-            sbd.AddGridformingConverter(app, ElmNet_base, ElmGenstat, app.GetGlobalLibrary(), GF_modell, 'constc', cosn, Dict_IntScenario_ElmGenstat, dynamisation=True,
+            sbd.AddGridformingConverter(ElmNet_base, ElmGenstat, app.GetGlobalLibrary(), GF_modell, 'constc', cosn, Dict_IntScenario_ElmGenstat, dynamisation=True,
                                         PQLimit=PQLimit, IntFolder_PQLimitsLF=app.GetProjectFolder('mvar'), dispatchcosn=cosgini,
                                         **{'Synchronverter control': {'Ta': 3}},
-                                        **{'Virtual impedance': {'r': 0}},
-                                        **{'Virtual impedance': {'x': 0.1}})
+                                        **{'Virtual impedance': {'r': 0,
+                                                                 'x': 0.1}},
+                                       )
         else:
-            sbd.AddConverterModell(app, prj_sb, ElmGenstat, av_mode, cosn, ModelDict, DERModel_params, Dict_IntScenario_ElmGenstat, dynamisation=True, PCR=False, qv_ref=1,
+            sbd.AddConverterModell(prj_sb, ElmGenstat, av_mode, cosn, ModelDict, DERModel_params, Dict_IntScenario_ElmGenstat, dynamisation=True, PCR=False, qv_ref=1,
                                    PQLimit=PQLimit, IntFolder_PQLimitsLF=app.GetProjectFolder('mvar'), dispatchcosn=cosgini)
     app.WriteChangesToDb()
+
+    # Apply operational data to all relevant scenarios
+    for id_scen in operation_scenarios:
+        if not isinstance(id_scen, datetime):
+            app.GetProjectFolder('scen').GetContents(id_scen)[0].Activate()
+
+            for ElmGenstat, params in Dict_IntScenario_ElmGenstat.items():
+                for param, val in params.items():
+                    ElmGenstat.SetAttribute(param, val)
+
+            app.GetProjectFolder('scen').GetContents(id_scen)[0].Save()
+            app.WriteChangesToDb()
 
 app.WriteChangesToDb()
 app.SetWriteCacheEnabled(0)

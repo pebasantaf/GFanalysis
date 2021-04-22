@@ -278,24 +278,24 @@ def ApplyConverters(app, activeproject, GFol_model, gentype, convtype, **kwargs)
 
         if convtype == 'GridFollowing':
 
-            sbd.AddConverterModell(app, activeproject, ElmGenstat, av_mode, cosn, ModelDict, DERModel_params,Dict_IntScenario_ElmGenstat, dynamisation=False, PCR=False, qv_ref=1,
+            sbd.AddConverterModell(activeproject, ElmGenstat, av_mode, cosn, ModelDict, DERModel_params,Dict_IntScenario_ElmGenstat, dynamisation=False, PCR=False, qv_ref=1,
                                    PQLimit=PQLimit, IntFolder_PQLimitsLF=app.GetProjectFolder('mvar'))
 
         elif convtype == 'Synchronverter':
 
-            sbd.AddGridformingConverter(app, ElmNet_base, ElmGenstat, app.GetGlobalLibrary(), 'Synchronverter', 'constc', cosn, Dict_IntScenario_ElmGenstat, dynamisation=False,
+            sbd.AddGridformingConverter(ElmNet_base, ElmGenstat, app.GetGlobalLibrary(), 'Synchronverter', 'constc', cosn, Dict_IntScenario_ElmGenstat, dynamisation=False,
                                     PQLimit=PQLimit, IntFolder_PQLimitsLF=app.GetProjectFolder('mvar'), dispatchcosn=cosgini,
                                     **{'Synchronverter control': {'Ta': 3}}, **{'Virtual impedance': {'r': 0}}, **{'Virtual impedance': {'x': 0.1}})
 
         elif convtype == 'Droop Controlled Converter':
 
-            sbd.AddGridformingConverter(app, ElmNet_base, ElmGenstat, app.GetGlobalLibrary(), 'Droop Controlled Converter', 'constc', cosn, Dict_IntScenario_ElmGenstat, dynamisation=False,
+            sbd.AddGridformingConverter(ElmNet_base, ElmGenstat, app.GetGlobalLibrary(), 'Droop Controlled Converter', 'constc', cosn, Dict_IntScenario_ElmGenstat, dynamisation=False,
                                         PQLimit=PQLimit, IntFolder_PQLimitsLF=app.GetProjectFolder('mvar'), dispatchcosn=cosgini, **{'Virtual impedance': {'r': 0}}, **{'Virtual impedance': {'x': 0.1}})
 
 
         elif convtype == 'Virtual Synchronous Machine':
 
-            sbd.AddGridformingConverter(app, ElmNet_base, ElmGenstat, app.GetGlobalLibrary(), 'Virtual Synchronous Machine', 'constc', cosn, Dict_IntScenario_ElmGenstat, dynamisation=False,
+            sbd.AddGridformingConverter(ElmNet_base, ElmGenstat, app.GetGlobalLibrary(), 'Virtual Synchronous Machine', 'constc', cosn, Dict_IntScenario_ElmGenstat, dynamisation=False,
                                     PQLimit=PQLimit, IntFolder_PQLimitsLF=app.GetProjectFolder('mvar'), dispatchcosn=cosgini,
                                     **{'Grid-forming control': {'Ta': 3}}, **{'Virtual impedance': {'r': 0}}, **{'Virtual impedance': {'x': 0.1}})
 
