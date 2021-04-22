@@ -28,11 +28,13 @@ path_model = r"I:\05_Basanta Franco\Masterarbeit_local\Models\DEAModel_20210209_
 
 # SimBench PowerFactory Project
 path_griddata = r"I:\05_Basanta Franco\Masterarbeit_local\01_MVLV-Netze_vollständig"
-grid_dirlist = [f for f in os.listdir(path_griddata) if '-all-0-sw' in f]
+grid_dirlist = ['1-MVLV-rural-all-0-sw']
 
 # Location for exports
 path_export = os.path.join(r"I:\05_Basanta Franco\Masterarbeit_local\Results", f'{datetime.now().strftime("%Y%m%d-%H-%M-%S")}')
 os.mkdir(path_export)
+
+cosgini = 1
 
 # Iterate over all pfd files
 for grid_dir in grid_dirlist:
@@ -76,7 +78,10 @@ for grid_dir in grid_dirlist:
         ChaRef.SetAttribute('outserv', 0)
 
     # Add a dynamic model to all ElmGenstat Objects ToDo: differentiate between different types
+
+    # initialize dictionary for storing scenario data
     Dict_IntScenario_ElmGenstat = {}
+
     for ElmGenstat in ElmNet_base.GetContents('*.ElmGenstat', 1):
 
         # Get Voltage level
@@ -100,18 +105,20 @@ for grid_dir in grid_dirlist:
 
         # HV settings
         elif u_ElmGenstat >= 110:
-            av_mode = 'qvchar'
+            av_mode = 'constc'
             PQLimit = 'VDE_AR_N_4120_Var1'
             cosn = 0.9
 
         # Add converter type according to category
         if ElmGenstat.GetAttribute('cCategory') in GF_type_list:
-            sbd.AddGridformingConverter(ElmNet_base, ElmGenstat, app.GetGlobalLibrary(), GF_modell, 'constc', cosn,
-                                        PQLimit=PQLimit, IntFolder_PQLimitsLF=app.GetProjectFolder('mvar'),
-                                        **{'Synchronverter control': {'Ta': 5}})
+            sbd.AddGridformingConverter(app, ElmNet_base, ElmGenstat, app.GetGlobalLibrary(), GF_modell, 'constc', cosn, Dict_IntScenario_ElmGenstat, dynamisation=True,
+                                        PQLimit=PQLimit, IntFolder_PQLimitsLF=app.GetProjectFolder('mvar'), dispatchcosn=cosgini,
+                                        **{'Synchronverter control': {'Ta': 3}},
+                                        **{'Virtual impedance': {'r': 0}},
+                                        **{'Virtual impedance': {'x': 0.1}})
         else:
-            sbd.AddConverterModell(prj_sb, ElmGenstat, av_mode, cosn, ModelDict, DERModel_params, PCR=False, qv_ref=1,
-                                   PQLimit=PQLimit, IntFolder_PQLimitsLF=app.GetProjectFolder('mvar'))
+            sbd.AddConverterModell(app, prj_sb, ElmGenstat, av_mode, cosn, ModelDict, DERModel_params, Dict_IntScenario_ElmGenstat, dynamisation=True, PCR=False, qv_ref=1,
+                                   PQLimit=PQLimit, IntFolder_PQLimitsLF=app.GetProjectFolder('mvar'), dispatchcosn=cosgini)
     app.WriteChangesToDb()
 
 app.WriteChangesToDb()

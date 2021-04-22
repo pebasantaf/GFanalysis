@@ -44,7 +44,7 @@ def ActivateVariation(SelVariation, app):
             varis.Activate()
 
 
-    return varis
+        return varis
 
 def CreateSimpleStabilityStudy(app, CreateScens):
 
@@ -53,15 +53,55 @@ def CreateSimpleStabilityStudy(app, CreateScens):
     AktCase = app.GetActiveStudyCase()
     CaseNames = ['Frequency Ramp', 'Voltage Step', 'Voltage Ramp']
 
-    if len(MyCases.GetContents()) == 1:
+    if len(MyCases.GetContents('*.IntCase')) == 1:
 
         if CaseNames[0] not in AktCase.GetFullName():
             AktCase.SetAttribute('loc_name', CaseNames[0])
             print('Changing name of active study case')
         print('Procceeding to create the rest of cases')
 
-        for n in range(3):
+        for n in range(len(CaseNames)-1):
             MyCases.AddCopy(AktCase, CaseNames[n + 1])
+
+        for case in MyCases.GetContents('*.IntCase'): #for every object intcase
+
+            print('Setting events for ' + CaseNames[MyCases.GetContents('*.IntCase').index(case)])
+            Events = case.GetContents('*.IntEvt')[0]
+
+            if len(Events[0].GetContents()) != 0:  # Delete whatever existing event parameters. This could be improved to check if desired events exist
+
+                for evt in Events[0].GetContents():
+                    evt.Delete()
+
+            if CaseNames[0] in case.GetFullName():
+
+
+                Events[0].CreateObject('*.EvtParam', 'ftime')
+                Events[0].GetContents('ftime')
+                Events[0].CreateObject('*.EvtParam', 'fslope')
+
+            elif CaseNames[1] in case.GetFullName():
+
+                Events[0].CreateObject('*.EvtParam', 'vdip')
+                Events[0].CreateObject('*.EvtParam', 'vtime')
+
+            elif CaseNames[2] in case.GetFullName():
+
+                Events[0].CreateObject('*.EvtParam', 'vdip')
+                Events[0].CreateObject('*.EvtParam', 'tinic')
+                Events[0].CreateObject('*.EvtParam', 'tdip')
+                Events[0].CreateObject('*.EvtParam', 'tramp')
+
+
+
+
+
+
+
+
+
+
+
 
     if CreateScens == 1:
 
@@ -230,29 +270,37 @@ def ApplyConverters(app, activeproject, GFol_model, gentype, convtype, **kwargs)
             PQLimit = 'VDE_AR_N_4120_Var1'
             cosn = 0.9
 
+        cosgini = kwargs.get('cosgini')
         # Add converter type according to category
+
+        # initialize dictionary for storing scenario data
+        Dict_IntScenario_ElmGenstat = {}
 
         if convtype == 'GridFollowing':
 
-            sbd.AddConverterModell(activeproject, ElmGenstat, av_mode, cosn, ModelDict, DERModel_params, PCR=False, qv_ref=1,
+            sbd.AddConverterModell(app, activeproject, ElmGenstat, av_mode, cosn, ModelDict, DERModel_params,Dict_IntScenario_ElmGenstat, dynamisation=False, PCR=False, qv_ref=1,
                                    PQLimit=PQLimit, IntFolder_PQLimitsLF=app.GetProjectFolder('mvar'))
 
         elif convtype == 'Synchronverter':
 
-            sbd.AddGridformingConverter(ElmNet_base, ElmGenstat, app.GetGlobalLibrary(), 'Synchronverter', 'constc', cosn,
-                                    PQLimit=PQLimit, IntFolder_PQLimitsLF=app.GetProjectFolder('mvar'),
-                                    **{'Synchronverter control': {'Ta': 5}})
+            sbd.AddGridformingConverter(app, ElmNet_base, ElmGenstat, app.GetGlobalLibrary(), 'Synchronverter', 'constc', cosn, Dict_IntScenario_ElmGenstat, dynamisation=False,
+                                    PQLimit=PQLimit, IntFolder_PQLimitsLF=app.GetProjectFolder('mvar'), dispatchcosn=cosgini,
+                                    **{'Synchronverter control': {'Ta': 3}}, **{'Virtual impedance': {'r': 0}}, **{'Virtual impedance': {'x': 0.1}})
 
         elif convtype == 'Droop Controlled Converter':
 
-            sbd.AddGridformingConverter(ElmNet_base, ElmGenstat, app.GetGlobalLibrary(), 'Droop Controlled Converter', 'constc', cosn,
-                                        PQLimit=PQLimit, IntFolder_PQLimitsLF=app.GetProjectFolder('mvar'))
+            sbd.AddGridformingConverter(app, ElmNet_base, ElmGenstat, app.GetGlobalLibrary(), 'Droop Controlled Converter', 'constc', cosn, Dict_IntScenario_ElmGenstat, dynamisation=False,
+                                        PQLimit=PQLimit, IntFolder_PQLimitsLF=app.GetProjectFolder('mvar'), dispatchcosn=cosgini, **{'Virtual impedance': {'r': 0}}, **{'Virtual impedance': {'x': 0.1}})
 
 
         elif convtype == 'Virtual Synchronous Machine':
 
-            sbd.AddGridformingConverter(ElmNet_base, ElmGenstat, app.GetGlobalLibrary(), 'Virtual Synchronous Machine', 'constc', cosn,
-                                    PQLimit=PQLimit, IntFolder_PQLimitsLF=app.GetProjectFolder('mvar'),
-                                    **{'Grid-forming control': {'Ta': 5}})
+            sbd.AddGridformingConverter(app, ElmNet_base, ElmGenstat, app.GetGlobalLibrary(), 'Virtual Synchronous Machine', 'constc', cosn, Dict_IntScenario_ElmGenstat, dynamisation=False,
+                                    PQLimit=PQLimit, IntFolder_PQLimitsLF=app.GetProjectFolder('mvar'), dispatchcosn=cosgini,
+                                    **{'Grid-forming control': {'Ta': 3}}, **{'Virtual impedance': {'r': 0}}, **{'Virtual impedance': {'x': 0.1}})
+
+        else:
+
+            sys.exit('Invalid converter name: '+ convtype)
 
     app.WriteChangesToDb()

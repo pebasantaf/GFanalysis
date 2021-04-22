@@ -1,30 +1,59 @@
 import functions.dynamisation.CreatePowerfactoryObjects as cpo
 import functions.dynamisation.CreatePowerFactoryObjects_v2 as cpo2
 import math
+import datetime
 
 # Adds a dynamic model to a ElmGenstat object
-def AddConverterModell(prj, ElmGenstat, av_mode, cosn, ModelDict, DERModel_params, PCR=False, qv_ref=1, PQLimit=None, IntFolder_PQLimitsLF = None):
+def AddConverterModell(app,prj, ElmGenstat, av_mode, cosn, ModelDict, DERModel_params, Dict_IntScenario_ElmGenstat, dynamisation=False, PCR=False, qv_ref=1, PQLimit=None, IntFolder_PQLimitsLF = None, dispatchcosn=0.95):
 
-    # Get Point of Cupling (ElmTerm)
+    # Dictionary for values to be changed in IntScenario objects
+
+    Dict_IntScenario_ElmGenstat[ElmGenstat] = {}
+
+    Dict_IntScenario_ElmGenstat[ElmGenstat]['mode_inp'] = ElmGenstat.GetAttribute('mode_inp')
+    Dict_IntScenario_ElmGenstat[ElmGenstat]['cosgini'] = ElmGenstat.GetAttribute('cosgini')
+    Dict_IntScenario_ElmGenstat[ElmGenstat]['pf_recap'] = ElmGenstat.GetAttribute('pf_recap')
+
+    # operation scenarios
+
+    operation_scenarios = ['lPV.IntScenario', 'hL.IntScenario', 'hPV.IntScenario', 'hW.IntScenario', 'lPV.IntScenario', 'lW.IntScenario']
+
+    # Apply operational data to all relevant scenarios
+    for id_scen in operation_scenarios:
+        if not isinstance(id_scen, datetime.datetime):
+            app.GetProjectFolder('scen').GetContents(id_scen)[0].Activate()
+
+            for ElmGenstat, params in Dict_IntScenario_ElmGenstat.items():
+                for param, val in params.items():
+                    ElmGenstat.SetAttribute(param, val)
+
+            app.GetProjectFolder('scen').GetContents(id_scen)[0].Save()
+            app.WriteChangesToDb()
+
+    # Get Point of Coupling (ElmTerm)
     ElmTerm = ElmGenstat.GetAttribute('bus1').GetAttribute('cterm')
 
     # Get Voltage level
     uknom = ElmTerm.GetAttribute('uknom')
 
-    # Set RMS settings
-    ElmGenstat.SetAttribute('umin', 0)
-    ElmGenstat.SetAttribute('uonthr',10)
-    ElmGenstat.SetAttribute('iAstabint', 1)
+    if dynamisation:
 
-    # ToDo: Add Switches?
+        # Set RMS settings
+        ElmGenstat.SetAttribute('umin', 0)
+        ElmGenstat.SetAttribute('uonthr',10)
+        ElmGenstat.SetAttribute('iAstabint', 1)
+
+        # ToDo: Add Switches?
+
+
+
+        # Change active power limits
+        ElmGenstat.SetAttribute('cosn', cosn)
+        ElmGenstat.SetAttribute('Pmax_uc', ElmGenstat.GetAttribute('sgn'))
+        ElmGenstat.SetAttribute('sgn', ElmGenstat.GetAttribute('sgn')/cosn)
 
     # Set stationary reactive power provision
     ElmGenstat.SetAttribute('av_mode', av_mode)
-
-    # Change active power limits
-    ElmGenstat.SetAttribute('cosn', cosn)
-    ElmGenstat.SetAttribute('Pmax_uc', ElmGenstat.GetAttribute('sgn'))
-    ElmGenstat.SetAttribute('sgn', ElmGenstat.GetAttribute('sgn')/cosn)
 
     # Create Controller
     ElmComp_DER = cpo.create_ElmComp(ElmGenstat.GetAttribute('loc_name') + '_Controller', prj.SearchObject('\\'.join(ElmGenstat.GetFullName().split('\\')[:-1])),
@@ -58,7 +87,7 @@ def AddConverterModell(prj, ElmGenstat, av_mode, cosn, ModelDict, DERModel_param
         ElmGenstat.SetAttribute('udeadbup', ElmDsl_Q.GetAttribute('Vref') - ElmDsl_Q.GetAttribute('Vdead'))
     elif av_mode == 'constc':
         ElmGenstat.SetAttribute('mode_inp', 'PC')
-        ElmGenstat.SetAttribute('cosgini', cosn)
+        ElmGenstat.SetAttribute('cosgini', dispatchcosn)
         ElmGenstat.SetAttribute('pf_recap', 1)
 
 
@@ -169,30 +198,61 @@ def AddVoltageSource(ElmNet, ModelDict, ElmTerm, Unom):
 
 # Add grid forming converter modell from PowerFactory library
 # Possible Models: Droop Controlled Converter, Synchronverter, Virtual Synchronous Machine
-def AddGridformingConverter(target, ElmGenstat, IntLibrary, GF_modell, av_mode, cosn, PQLimit=None,
-                            IntFolder_PQLimitsLF=None,
+def AddGridformingConverter(app,target, ElmGenstat, IntLibrary, GF_modell, av_mode, cosn,Dict_IntScenario_ElmGenstat, dynamisation=False, PQLimit=None,
+                            IntFolder_PQLimitsLF=None, dispatchcosn = 0.95,
                             **kwargs):
+    # Dictionary for values to be changed in IntScenario objects
 
-    # Get Point of Cupling (ElmTerm)
-    ElmTerm = ElmGenstat.GetAttribute('bus1').GetAttribute('cterm')
+    Dict_IntScenario_ElmGenstat[ElmGenstat] = {}
 
-    # Get Voltage level
-    uknom = ElmTerm.GetAttribute('uknom')
+    Dict_IntScenario_ElmGenstat[ElmGenstat]['mode_inp'] = ElmGenstat.GetAttribute('mode_inp')
+    Dict_IntScenario_ElmGenstat[ElmGenstat]['cosgini'] = ElmGenstat.GetAttribute('cosgini')
+    Dict_IntScenario_ElmGenstat[ElmGenstat]['pf_recap'] = ElmGenstat.GetAttribute('pf_recap')
 
-    # Set RMS settings
-    ElmGenstat.SetAttribute('umin', 0)
-    ElmGenstat.SetAttribute('uonthr',10)
-    ElmGenstat.SetAttribute('iAstabint', 1)
+    # operation scenarios
 
-    # ToDo: Add Switches?
+    operation_scenarios = ['lPV.IntScenario', 'hL.IntScenario', 'hPV.IntScenario', 'hW.IntScenario', 'lPV.IntScenario',
+                           'lW.IntScenario']
+
+    # Apply operational data to all relevant scenarios
+    for id_scen in operation_scenarios:
+        if not isinstance(id_scen, datetime.datetime):
+            app.GetProjectFolder('scen').GetContents(id_scen)[0].Activate()
+
+            for ElmGenstat, params in Dict_IntScenario_ElmGenstat.items():
+                for param, val in params.items():
+                    ElmGenstat.SetAttribute(param, val)
+
+            app.GetProjectFolder('scen').GetContents(id_scen)[0].Save()
+            app.WriteChangesToDb()
+
+    if dynamisation:
+        # Get Point of Cupling (ElmTerm)
+        ElmTerm = ElmGenstat.GetAttribute('bus1').GetAttribute('cterm')
+
+        # Get Voltage level
+        uknom = ElmTerm.GetAttribute('uknom')
+
+        # Set RMS settings
+        ElmGenstat.SetAttribute('umin', 0)
+        ElmGenstat.SetAttribute('uonthr',10)
+        ElmGenstat.SetAttribute('iAstabint', 1)
+
+        # ToDo: Add Switches?
+
+
+
+        # Change active power limits
+        ElmGenstat.SetAttribute('cosn', cosn)
+        ElmGenstat.SetAttribute('Pmax_uc', ElmGenstat.GetAttribute('sgn'))
+        ElmGenstat.SetAttribute('sgn', ElmGenstat.GetAttribute('sgn')/cosn)
 
     # Set stationary reactive power provision
     ElmGenstat.SetAttribute('av_mode', av_mode)
 
-    # Change active power limits
-    ElmGenstat.SetAttribute('cosn', cosn)
-    ElmGenstat.SetAttribute('Pmax_uc', ElmGenstat.GetAttribute('sgn'))
-    ElmGenstat.SetAttribute('sgn', ElmGenstat.GetAttribute('sgn')/cosn)
+    #dispatch power factor
+
+    ElmGenstat.SetAttribut('cosgini', dispatchcosn)
 
     # Create PQ-Limits
     if PQLimit != None:
@@ -206,8 +266,16 @@ def AddGridformingConverter(target, ElmGenstat, IntLibrary, GF_modell, av_mode, 
     # Get template
     IntTemplate = IntLibrary.GetContents('Templ')[0].GetContents('TemplGfc')[0].GetContents(GF_modell)[0]
 
+    # Get virtual impedance
+
+    vim = IntTemplate.GetContents('Library')[0].GetContents('Dynamic Models')[0].GetContents(
+        'vim_constant virtual impedance')[0]
+
     # Copy composite model
     ElmComp = target.PasteCopy(IntTemplate.GetContents('*.ElmComp')[0])[1]
+
+    #set virtual impedance
+    ElmComp.GetAttribute('Virtual impedance').SetAttribute('typ_id', vim)
 
     # Rename model
     ElmComp.SetAttribute('loc_name', f'{ElmGenstat.GetAttribute("loc_name")}_GF_Controller')

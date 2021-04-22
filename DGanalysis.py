@@ -1,14 +1,18 @@
 import sys
 import os
-import datetime
+from datetime import datetime
 import functions.convcompar.datamanager as DM
 import functions.convcompar.PFmanager as PFM
+import time
 from prettytable import PrettyTable
 
 
 sys.path.append(r'C:\Program Files\DIgSILENT\PowerFactory 2021 SP1\Python\3.8')
 
 import powerfactory as pf
+
+start = time.asctime()
+print(start)
 
 #Initiate powerfactory. In case there is an error, will give the error code number
 try:
@@ -21,7 +25,7 @@ except pf.ExitError as error:
 
 # project and simulation inputs
 
-proj_name = '1-MVLV-rural-all-0-sw'
+proj_name = '1-MVLV-rural-all-0-sw(2)'
 GFol_model = r"I:\05_Basanta Franco\Masterarbeit_local\Models\DEAModel_20210209_PQ_Limits.pfd"
 
 app.ActivateProject(proj_name)
@@ -33,23 +37,25 @@ Reset = False
 
 if Reset:
 
+    PFM.CreateSimpleStabilityStudy(app, 0)
     gentype = ['Wind', 'Photovoltaic']
-    convtype = 'GridFollowing'
+    convtype = 'Synchronverter'
     print('Reseting Power Factory grid to initial state')
     PFM.ApplyConverters(app, proj, GFol_model, gentype, convtype, convname='LV2')
     quit()
 
 # INPUT
 
-gentype = [['Wind'], ['Wind', 'Photovoltaic']]
-convtype = 'Synchronverter'
+gentype = [['Wind']]
+converters = ['Droop Controlled Converter', 'Virtual Synchronous Machine', 'Synchronverter', 'GridFollowing']
+convtype = converters[2:3]
 
 # Mode: 0-Change Converters; 1-Execute simulation; 2-Import data; 3-Plot
 
-Modes = [1, 0, 1, 0, 1]
+Modes = [0]
 filemode = 'Create' #filemodes: Create or Read
 folder = datetime.now().strftime("\\%d.%m.%Y_%H-%M-%S") + '_DG\\'
-fileending = [".csv", "-GF-wind.csv", "-GF-wind-solar.csv"]
+fileending = [s + '.csv' for s in convtype]
 
 
 g = 0  # generation type counter
@@ -62,11 +68,11 @@ for i in range(len(Modes)):
 
     if Modes[i] == 0:
 
-        print('Applying ' + convtype +' for '+ str(gentype[g]) + ' generators')
+        print('Applying ' + convtype[c] +' for '+ str(gentype[g]) + ' generators')
 
-        PFM.ApplyConverters(app, proj, GFol_model, gentype[g], convtype, convname='LV2')
+        PFM.ApplyConverters(app, proj, GFol_model, gentype[g], convtype[c], convname='LV2',cosgini=1)
 
-        print(convtype + ' applied')
+        print(convtype[c] + ' applied')
 
         if g + 1 < len(gentype):
             g += 1
@@ -76,7 +82,7 @@ for i in range(len(Modes)):
 
     elif Modes[i] == 1:
 
-        path = DM.ReadorCreatePath('Create', folder=folder, filename=proj_name+fileending[f])
+        path = DM.ReadorCreatePath('Create', folder=folder, filename=str(f) + '-' + proj_name+fileending[f])
         f += 1
 
         print('Executing simulation and storing results')
@@ -99,17 +105,19 @@ for i in range(len(Modes)):
     elif Modes[i] == 3:
         # plot
 
-        DM.DFplot(ResultsList, [1, 1],
+        DM.DFplot(ResultsList, [1, 1], 'dgcompar',
                   xaxis=0,
                   xlabel='Time (s)',
-                  savefigures=False,
-                  ylabel=list(map(list(ResultsList[0].columns).__getitem__, columns)),
-                  seriesnames=['0GF', 'WindGF', 'WindLV2SolarGF']
+                  savefigures=True,
+                  seriesnames=convtype,
+                  figurefolder='grid_comparison/'
                   )
 
     else:
         raise Exception('Wrong value')
 
+end =  time.asctime()
+print(end)
 
 
 
