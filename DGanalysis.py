@@ -1,18 +1,17 @@
 import sys
 import os
-from datetime import datetime
-import functions.convcompar.datamanager as DM
+import datetime
 import functions.convcompar.PFmanager as PFM
-import time
-from prettytable import PrettyTable
+import functions.convcompar.datamanager as DM
+from conf.configs import confselect
+import functions.dynamisation
+#from conf.configs import confselect
+from pprint import pprint
 
 
 sys.path.append(r'C:\Program Files\DIgSILENT\PowerFactory 2021 SP1\Python\3.8')
 
 import powerfactory as pf
-
-start = time.asctime()
-print(start)
 
 #Initiate powerfactory. In case there is an error, will give the error code number
 try:
@@ -23,103 +22,100 @@ except pf.ExitError as error:
     print('error.code = %d' % error.code)
     print('error.code = %d' % error.code)
 
-# project and simulation inputs
+# Activate the project
+projname = str("DEAModel_gridforming_20210301")
 
-proj_name = '1-MVLV-rural-all-0-sw(2)'
-GFol_model = r"I:\05_Basanta Franco\Masterarbeit_local\Models\DEAModel_20210209_PQ_Limits.pfd"
+app.ActivateProject(projname)
 
-app.ActivateProject(proj_name)
-proj = app.GetActiveProject()
-
-# RESET
-
-Reset = False
-
-if Reset:
-
-    PFM.CreateSimpleStabilityStudy(app, 0)
-    gentype = ['Wind', 'Photovoltaic']
-    convtype = 'Synchronverter'
-    print('Reseting Power Factory grid to initial state')
-    PFM.ApplyConverters(app, proj, GFol_model, gentype, convtype, convname='LV2')
-    quit()
-
-# INPUT
-
-gentype = [['Wind']]
-converters = ['Droop Controlled Converter', 'Virtual Synchronous Machine', 'Synchronverter', 'GridFollowing']
-convtype = converters[2:3]
-
-# Mode: 0-Change Converters; 1-Execute simulation; 2-Import data; 3-Plot
-
-Modes = [0]
-filemode = 'Create' #filemodes: Create or Read
-folder = datetime.now().strftime("\\%d.%m.%Y_%H-%M-%S") + '_DG\\'
-fileending = [s + '.csv' for s in convtype]
+# Get project that is active as and application
+project = app.GetActiveProject()
 
 
-g = 0  # generation type counter
-c = 0  # converter type counter
-f = 0  # file counter
+# Get Calculation object by getting active study case. This active case is related to a grid or part of a grid that is active.
+#Then, getting the initial conditions and the simulation object to being executed at the end
+
+#  function CreateSimpleStabilityStudy
+
+PFM.CreateSimpleStabilityStudy(app, 0)
+
+# manage variations
 
 ResultsList = list()
+faultname = 'allvoldip'
+conf = confselect(faultname)
 
-for i in range(len(Modes)):
+# Frequency Ramp, Voltage Step, Voltage Ramp
+Modes = [1]  # Modes: 0-Run; 1-Plot
 
-    if Modes[i] == 0:
+# activate study case
 
-        print('Applying ' + convtype[c] +' for '+ str(gentype[g]) + ' generators')
+SelCase = app.GetProjectFolder('study').GetContents(conf.get('StudyCase'))[0]
+SelCase.Activate()
 
-        PFM.ApplyConverters(app, proj, GFol_model, gentype[g], convtype[c], convname='LV2',cosgini=1)
+NetData = app.GetProjectFolder('netdat')
+Net = NetData.GetContents('110KV.ElmNet')
 
-        print(convtype[c] + ' applied')
+newfolder = datetime.datetime.now().strftime("\\%d.%m.%Y_%H-%M-%S") + '_CC\\'
+filenum = 1
 
-        if g + 1 < len(gentype):
-            g += 1
+for Mode in Modes:
 
-        if c + 1 < len(convtype):
-            c += 1
+    if Mode == 0:
+        for varname in conf.get('Variation Name'):
 
-    elif Modes[i] == 1:
+            Variation = PFM.ActivateVariation(varname, app)
 
-        path = DM.ReadorCreatePath('Create', folder=folder, filename=str(f) + '-' + proj_name+fileending[f])
-        f += 1
+            Converter = Net[0].GetContents('*.ElmGenStat')[0]
+            Frame = Converter.GetAttribute('c_pmod')
 
-        print('Executing simulation and storing results')
+            for val in conf.get('faultvalues'):
 
-        # excute and export
-        PFM.RunNSave(app, 1, tstop=1, path=path)
-        print('Simulation finished')
+                # apply desired fault values
+                PFM.SetFaulEvent(app, conf.get('StudyCase'), conf.get('tinit'), conf.get('tend'), val)
 
-    elif Modes[i] == 2:
+                # apply desired inertia values
+                for inval in conf.get('inertiavalues'):
+
+                    if varname == 'Synchronverter':
+
+                        print('Applying inertia value ' + str(inval))
+                        Frame.GetAttribute('Synchronverter control').SetAttribute('Ta', inval)
+
+                    elif varname == 'VSM':
+
+                        print('Applying inertia value ' + str(inval))
+                        Frame.GetAttribute('Grid-forming control').SetAttribute('Ta', inval)
+
+                    else:
+
+                        print('Converter has no inertia')
+
+                    path = DM.ReadorCreatePath('Create', folder=newfolder, filename=str(filenum) + '-' +
+                                                                                    "{controller}-{faultname}{faults}-inertia{inertia}.csv".format(controller=varname, faultname= faultname, faults=val,inertia=inval))
+
+                    filenum += 1
+
+                    # EXECUTING SIMULATION
+                    print('Executing simulation')
+                    PFM.RunNSave(app, True, tstop=2, path=path)
+
+    elif Mode == 1:
 
         path = DM.ReadorCreatePath('Read', readmode='lastfile')
-
         # import results
         for direc in os.listdir(path):
-
-            Results = DM.importData(path+direc).astype(float)
+            Results = DM.importData(path + direc).astype(float)
 
             ResultsList.append(Results)
 
-    elif Modes[i] == 3:
-        # plot
+        # print results
 
-        DM.DFplot(ResultsList, [1, 1], 'dgcompar',
-                  xaxis=0,
+        DM.DFplot(ResultsList, [1, 1], 'convcompar',
+                  xaxis=conf.get('xaxis'),
                   xlabel='Time (s)',
-                  savefigures=True,
-                  seriesnames=convtype,
-                  figurefolder='grid_comparison/'
-                  )
+                  seriesnames=conf.get('seriesnames'),
+                  savefigures=conf.get('savefigures'),
+                  fixplot=conf.get('fixplot'),
+                  figurefolder=conf.get('figurefolder'))
 
-    else:
-        raise Exception('Wrong value')
-
-end =  time.asctime()
-print(end)
-
-
-
-
-
+app.PostCommand("exit")
