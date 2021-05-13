@@ -41,11 +41,11 @@ PFM.CreateSimpleStabilityStudy(app, 0)
 # manage variations
 
 ResultsList = list()
-
-conf = confselect('freqramp')
+faultname = 'allvoldip'
+conf = confselect(faultname)
 
 # Frequency Ramp, Voltage Step, Voltage Ramp
-Modes = [0,1]  # Modes: 0-Run; 1-Plot
+Modes = [1]  # Modes: 0-Run; 1-Plot
 
 # activate study case
 
@@ -56,6 +56,7 @@ NetData = app.GetProjectFolder('netdat')
 Net = NetData.GetContents('110KV.ElmNet')
 
 newfolder = datetime.datetime.now().strftime("\\%d.%m.%Y_%H-%M-%S") + '_CC\\'
+filenum = 1
 
 for Mode in Modes:
 
@@ -89,12 +90,14 @@ for Mode in Modes:
 
                         print('Converter has no inertia')
 
-                    path = DM.ReadorCreatePath('Create', folder=newfolder, filename=str(conf.get('Variation Name').index(varname) + 1) +
-                                                                                    "results{controller}fault{faults}inertia{inertia}.csv".format(controller=varname, faults=conf.get('faultvalues'),inertia=inval))
+                    path = DM.ReadorCreatePath('Create', folder=newfolder, filename=str(filenum) + '-' +
+                                                                                    "{controller}-{faultname}{faults}-inertia{inertia}.csv".format(controller=varname, faultname= faultname, faults=val,inertia=inval))
+
+                    filenum += 1
 
                     # EXECUTING SIMULATION
                     print('Executing simulation')
-                    PFM.RunNSave(app, True, tstop=15, path=path)
+                    PFM.RunNSave(app, True, tstop=2, path=path)
 
     elif Mode == 1:
 
@@ -107,7 +110,7 @@ for Mode in Modes:
 
         # print results
 
-        DM.DFplot(ResultsList, [1, 1],
+        DM.DFplot(ResultsList, [1, 1], 'convcompar',
                   xaxis=conf.get('xaxis'),
                   xlabel='Time (s)',
                   seriesnames=conf.get('seriesnames'),

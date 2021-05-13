@@ -16,14 +16,22 @@ def importData(path):
     EV_raw_df.columns = pd.MultiIndex.from_tuples(EV_raw_df.columns.tolist())
     Head_Obj = EV_raw_df.columns.get_level_values(0).tolist()
     Head_Var = EV_raw_df.columns.get_level_values(1).tolist()
-    Head_Var = [s.split(' in ')[0] for s in Head_Var]  # take Varname, excluding the units (Original: Varname in MW)
+
+    for s in range(len(Head_Var)):
+        if 'in' in Head_Var[s]:
+            Head_Var[s] = Head_Var[s].split(' in ')[0] + ' (' + Head_Var[s].split('in ')[1] + ')'
+
+        else:
+
+            Head_Var[s] = Head_Var[s]
+
     new_Head = [Head_Obj[i] + '|' + Head_Var[i] for i in range(len(Head_Obj))]
     EV_raw_df.columns = new_Head
 
     return EV_raw_df
 
 
-def DFplot(DFlist, nsplts, **kwargs):
+def DFplot(DFlist, nsplts, mode, **kwargs):
 
     # This function plots a variable number of figures with variable number of supplots that all have the same x axis (normally time)
     # DFlist: list with the dataframes imported from csvs
@@ -61,11 +69,18 @@ def DFplot(DFlist, nsplts, **kwargs):
         # create reference strings. This is useful as sometimes equivalent columns of data from different converters will be in different positions in the dataframes
 
         reflist = list()
+        if mode == 'convcompar':
+            for col in columns:
 
-        for col in columns:
+                reference = 'Converter' + '|' + DFlist[0].columns[col].split('|')[1]
+                reflist.append(reference)
 
-            reference = 'Converter' + '|' + DFlist[0].columns[col].split('|')[1]
-            reflist.append(reference)
+        elif mode == 'dgcompar':
+
+            for col in columns:
+
+                reference = DFlist[0].columns[col]
+                reflist.append(reference)
 
         # generate figurs, plots and subplots
         for n in range(nfigs):
@@ -89,7 +104,7 @@ def DFplot(DFlist, nsplts, **kwargs):
                 for c in range(len(DFlist)):
 
                     targetcol = [s for s in DFlist[c].columns if reflist[n] in s]
-                    plt.figure(n+1).axes[m].plot(DFlist[c].iloc[:, [kwargs.get('xaxis')]], DFlist[c].loc[:, targetcol], label=kwargs.get('seriesnames')[c], linewidth=0.8)
+                    plt.figure(n+1).axes[m].plot(DFlist[c].iloc[:, [kwargs.get('xaxis')]], DFlist[c].loc[:, targetcol], label=kwargs.get('seriesnames')[c], linewidth=1.2)
 
 
                 # set up axis labels and legend
@@ -100,6 +115,7 @@ def DFplot(DFlist, nsplts, **kwargs):
                     plt.figure(n+1).axes[m].set_ylabel(kwargs.get('ylabel')[n].split('|')[1])
 
                 else:
+
 
                     plt.figure(n + 1).axes[m].set_ylabel(variables[columns[n]].split('|')[1])
 
@@ -114,7 +130,7 @@ def DFplot(DFlist, nsplts, **kwargs):
                 if kwargs.get('savefigures') == True:
                     figure = plt.gcf()
                     figure.set_size_inches(14, 8)
-                    plt.savefig(r'I:\05_Basanta Franco\Masterarbeit_local\images/'+ kwargs.get('figurefolder') + variables[columns[n]].replace('|', '-') + '.png', dpi=300)
+                    plt.savefig(r'I:\05_Basanta Franco\Masterarbeit_local\images/'+ kwargs.get('figurefolder') + reflist[n].replace('|', '-').replace('/',' ').replace('\\', ' ') + '.png', dpi=600)
 
                 elif kwargs.get('savefigures') == False:
 
@@ -122,13 +138,12 @@ def DFplot(DFlist, nsplts, **kwargs):
 
             plt.show()
 
-        moreplots = input('Plot more variables?')
+        moreplots = input('Plot more variables? ')
         moreplots = moreplots == 'True'
 
         if moreplots != True and moreplots != False:
 
             sys.exit('Answer can only be boolean')
-
 
 
 

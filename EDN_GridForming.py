@@ -18,21 +18,32 @@ try:
     app.SetWriteCacheEnabled(1)
 except:
     print('PowerFactory connection failed')
-
 # Set modes
-GF_modell = 'Synchronverter'
-GF_type_list = ['Wind']
+GF_modell = 'Synchronverter' # Synchronveter, Droop Controlled Converter, Virtual Synchronous Machine
+
+# set criteria to apply converters
+
+criteria = 'fullname' # 'Vlevel': voltage level; 'Gentype': type of generation; 'fullname': Full name of the converter
+
+# application list, that will change depending on the criteria
+app_list = ['MV1.101 SGen 1'] #MV1.101 SGen 1
 
 # Dynamic converter model project
 path_model = r"I:\05_Basanta Franco\Masterarbeit_local\Models\DEAModel_20210209_PQ_Limits.pfd"
 
 # SimBench PowerFactory Project
 path_griddata = r"I:\05_Basanta Franco\Masterarbeit_local\01_MVLV-Netze_vollständig"
-grid_dirlist = [f for f in os.listdir(path_griddata) if '-all-0-sw' in f]
+grid_dirlist = ['1-MVLV-rural-all-0-sw']
 
 # Location for exports
 path_export = os.path.join(r"I:\05_Basanta Franco\Masterarbeit_local\Results", f'{datetime.now().strftime("%Y%m%d-%H-%M-%S")}')
 os.mkdir(path_export)
+
+#available scenarios
+operation_scenarios = ['hPV.IntScenario', 'hW.IntScenario', 'lPV.IntScenario',
+                           'lW.IntScenario']
+
+cosgini = 1
 
 # Iterate over all pfd files
 for grid_dir in grid_dirlist:
@@ -73,11 +84,22 @@ for grid_dir in grid_dirlist:
 
     # Activate characteristics
     for ChaRef in app.GetProjectFolder('netdat').GetContents('*.ChaRef', 1):
-        ChaRef.SetAttribute('outserv', 0)
+        ChaRef.SetAttribute('outserv', 1)
 
     # Add a dynamic model to all ElmGenstat Objects ToDo: differentiate between different types
-    Dict_IntScenario_ElmGenstat = {}
+
+    # initialize dictionary for storing scenario data
+    Dict_IntScenario_ElmGenstat_GFor = {}
+    Dict_IntScenario_ElmGenstat_GFol = {}
+
+    allgens = ElmNet_base.GetContents('*.ElmGenstat', 1)
+
+    exceptions = [s for s in ElmNet_base.GetContents('*.ElmGenstat', 1) if
+                 'LV2' in s.GetFullName() and 'SGen 4' in s.GetFullName()]
+
     for ElmGenstat in ElmNet_base.GetContents('*.ElmGenstat', 1):
+
+        convname = ElmGenstat.GetAttribute('loc_name')
 
         # Get Voltage level
         u_ElmGenstat = ElmGenstat.GetAttribute('bus1').GetAttribute('cterm').GetAttribute('uknom')
@@ -100,19 +122,79 @@ for grid_dir in grid_dirlist:
 
         # HV settings
         elif u_ElmGenstat >= 110:
-            av_mode = 'qvchar'
+            av_mode = 'constc'
             PQLimit = 'VDE_AR_N_4120_Var1'
             cosn = 0.9
 
-        # Add converter type according to category
-        if ElmGenstat.GetAttribute('cCategory') in GF_type_list:
-            sbd.AddGridformingConverter(ElmNet_base, ElmGenstat, app.GetGlobalLibrary(), GF_modell, 'constc', cosn,
-                                        PQLimit=PQLimit, IntFolder_PQLimitsLF=app.GetProjectFolder('mvar'),
-                                        **{'Synchronverter control': {'Ta': 5}})
+        # selecte goal converter depending on criteria selected
+
+        if criteria == 'Vlevel':
+
+            goal = ElmGenstat.GetAttribute('loc_name')[0:2]
+
+        elif criteria == 'Gentype':
+
+            goal =ElmGenstat.GetAttribute('cCategory')
+
+        elif criteria == 'fullname':
+
+            goal = ElmGenstat.GetAttribute('loc_name')
+
         else:
-            sbd.AddConverterModell(prj_sb, ElmGenstat, av_mode, cosn, ModelDict, DERModel_params, PCR=False, qv_ref=1,
-                                   PQLimit=PQLimit, IntFolder_PQLimitsLF=app.GetProjectFolder('mvar'))
+
+            sys.exit('Wrong criteria')
+
+        # Add converter type according to category
+
+        exception = []
+
+        if 'LV2' in convname and 'SGen 4' in convname:
+
+            exception = [convname]
+
+        if (goal in app_list) and (convname not in exception):
+
+            sbd.AddGridformingConverter(ElmNet_base, ElmGenstat, app.GetGlobalLibrary(), GF_modell, 'constv', cosn, Dict_IntScenario_ElmGenstat_GFol, dynamisation=True,
+                                        PQLimit=PQLimit, IntFolder_PQLimitsLF=app.GetProjectFolder('mvar'), dispatchcosn=cosgini,
+                                        **{'Virtual impedance': {'r': 0,
+                                                                 'x': 0.1}}, #**{'Grid-forming control': {'Ta': 3}},
+                                       )
+        else:
+            sbd.AddConverterModell(prj_sb, ElmGenstat, av_mode, cosn, ModelDict, DERModel_params, Dict_IntScenario_ElmGenstat_GFor, dynamisation=True, PCR=False, qv_ref=1,
+                                   PQLimit=PQLimit, IntFolder_PQLimitsLF=app.GetProjectFolder('mvar'), dispatchcosn=cosgini)
     app.WriteChangesToDb()
+
+
+    # Apply operational data to all relevant scenarios
+    for id_scen in operation_scenarios:
+
+        if not isinstance(id_scen, datetime):
+
+            app.GetProjectFolder('scen').GetContents(id_scen)[0].Activate()
+
+            #remove characteristics of generators
+
+            for ChaRef in app.GetProjectFolder('netdat').GetContents('*.ChaRef', 1):
+                ChaRef.SetAttribute('outserv', 1)
+
+            for ElmGenstat, params in Dict_IntScenario_ElmGenstat_GFol.items():
+
+                for param, val in params.items():
+
+                    ElmGenstat.SetAttribute(param, val)
+
+            app.GetProjectFolder('scen').GetContents(id_scen)[0].Save()
+
+            app.WriteChangesToDb()
+
+            for ElmGenstat, params in Dict_IntScenario_ElmGenstat_GFor.items():
+
+                for param, val in params.items():
+
+                    ElmGenstat.SetAttribute(param, val)
+
+            app.GetProjectFolder('scen').GetContents(id_scen)[0].Save()
+            app.WriteChangesToDb()
 
 app.WriteChangesToDb()
 app.SetWriteCacheEnabled(0)
