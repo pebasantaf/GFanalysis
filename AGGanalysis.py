@@ -4,6 +4,9 @@ import os
 import pandas as pd
 import math
 import functions.aggregationstudy.aggfunctions as AGF
+import functions.convcompar.datamanager as DTM
+import matplotlib.pyplot as plt
+import numpy as np
 sys.path.append(r'C:\Program Files\DIgSILENT\PowerFactory 2021 SP1\Python\3.8')
 
 import powerfactory as pf
@@ -56,6 +59,8 @@ if mode == 'RXanalysis':
 
 elif mode == 'RMSE':
 
+    print('Obtaining all csv for RMSE calculation')
+
     var2plot = 'I1P'
     scendict = {p: 0 for p in escens}
 
@@ -63,8 +68,11 @@ elif mode == 'RMSE':
     controller = 'constphi'
     thedir = basepath + controller
 
-    subdirs = [name for name in os.listdir(thedir) if os.path.isdir(os.path.join(thedir, name))]
-    grids = {m.split('_')[0]:0 for m in subdirs}
+    print('Data in folder: ' + thedir)
+
+    subdirs = [name for name in os.listdir(thedir) if os.path.isdir(os.path.join(thedir, name))] #get all directory names in thedir
+    grids = [m.split('_')[0] for m in subdirs]
+    RMSEdf = pd.DataFrame(columns=escens, index=grids)
 
     for folder in subdirs: #for every grid setup
 
@@ -79,10 +87,31 @@ elif mode == 'RMSE':
             col2calc = [n for n in list(df.columns) if var2plot in n] # localize columns to be plotted
 
             RMSE = AGF.CalculateRMSE(df[col2calc[0]],df[col2calc[1]] ) # calculate rmse
-            normRMSE = RMSE/df[col2calc[0]][0] # normalize rmse
+            normRMSE = RMSE/abs(df[col2calc[0]][0]) # normalize rmse
 
-            scendict[file.split('_')[2].split('.')[0]] = normRMSE #store rmse information in dictionary
+            RMSEdf.loc[folder.split('_')[0], escens[targetcsv.index(file)]] = normRMSE * 100
 
-        grids[folder.split('_')[0]] = scendict # nest dictionary with scenario info in grid dictionary
+    print('RMSE calculated and stored in dataframe')
 
+x = np.arange(len(grids))
+color = ['b', 'g', 'r', 'y']
+width = 0.15
+plt.figure(1)
+
+
+for esc in escens:
+
+    plt.bar(x + (escens.index(esc) * width)-width*2, RMSEdf[esc], color = color[escens.index(esc)], width = width, label=esc, edgecolor='white', align='center', zorder=3)
+
+plt.xticks(x, grids)
+plt.xlabel('Grid variations')
+plt.ylabel('RMSE (%)')
+
+plt.grid(axis='y')
+plt.legend()
+
+plt.show()
+
+
+#DTM.DFplot(grids, aggcompar)
 
