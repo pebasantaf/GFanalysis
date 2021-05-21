@@ -19,7 +19,7 @@ try:
 except:
     print('PowerFactory connection failed')
 # Set modes
-GF_modell = 'Synchronverter' # Synchronveter, Droop Controlled Converter, Virtual Synchronous Machine
+GF_modell = 'Virtual Synchronous Machine' # Synchronveter, Droop Controlled Converter, Virtual Synchronous Machine
 
 # set criteria to apply converters
 
@@ -154,7 +154,7 @@ for grid_dir in grid_dirlist:
 
         if (goal in app_list) and (convname not in exception):
 
-            sbd.AddGridformingConverter(ElmNet_base, ElmGenstat, app.GetGlobalLibrary(), GF_modell, 'constv', cosn, Dict_IntScenario_ElmGenstat_GFol, dynamisation=True,
+            sbd.AddGridformingConverter(ElmNet_base, ElmGenstat, app.GetGlobalLibrary(), GF_modell, 'constc', cosn, Dict_IntScenario_ElmGenstat_GFol, dynamisation=True,
                                         PQLimit=PQLimit, IntFolder_PQLimitsLF=app.GetProjectFolder('mvar'), dispatchcosn=cosgini,
                                         **{'Virtual impedance': {'r': 0,
                                                                  'x': 0.1}}, #**{'Grid-forming control': {'Ta': 3}},

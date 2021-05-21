@@ -31,64 +31,65 @@ def importData(path):
     return EV_raw_df
 
 
-def DFplot(DFlist, nsplts, mode, **kwargs):
+def DFplot(DFlist, mode, **kwargs):
 
     # This function plots a variable number of figures with variable number of supplots that all have the same x axis (normally time)
     # DFlist: list with the dataframes imported from csvs
-    # nfigs: how many figures we want
-    # nsplts: list with two integers indicating rows and colums of subplots
-    # columns: columns to plot
+    # mode: what do we wanna plot (grid results, aggregation results, etc.). convcompar, dncompar, aggcompar
+    # kwargs:
+        # columns: integer list with which columns to plot
+        # nfgis: number of figures i want to plot
+        # fixplot: in convcompar and dgcompar mode, we plot results from different DF. If we want to plot a variable that is equal for all and should not be repited (a reference value, f.e. ), it should go here
+        # xaxis: which column should be the xaxis
+        # seriesname: names for legend
+        # xlabel: name for x axis
+        # ylable: name for y axis
+        # savefigures: save plotted figures in folder
+        # figurefolder
 
     moreplots = True
 
     while moreplots:
 
-        table = PrettyTable()
-        table.add_column('id', list(range(0, len(list(DFlist[0].columns)))))
-        table.add_column('Variable', list(DFlist[0].columns))
-        print(table)
+        if mode == 'convcompar' or mode == 'dncompar':  # if the selected mode is comparison of models in test grid or of distribution grids
+            variables = DFlist[0].columns
 
-        if 'columns' not in kwargs.items() or kwargs.get('columns') == None: #if variable columns is not a kwarg, ask for input
+            # show available columns
 
-            columns = input('Enter column id (format: x, x, x): ')
-            columns = columns.split(',')
-            columns = list(map(int, columns))
+            table = PrettyTable()
+            table.add_column('id', list(range(0, len(list(variables)))))
+            table.add_column('Variable', list(variables))
+            print(table)
 
-        else:
-            columns = kwargs.get('columns')
+            # if amount of figures is not given, just take the number of columns selected (meaning, having as many figures as variables selected for plotting)
+            if 'nfigs' not in kwargs.items():
+                nfigs = len(columns)
 
-        # if amount of figures is not given, just take the number of column
-        if 'nfigs' not in kwargs.items():
-            nfigs = len(columns)
+            else:
+                nfigs = kwargs.get('nfigs')
 
-        else:
-            nfigs = kwargs.get('nfigs')
 
-        variables = DFlist[0].columns
+            # create reference strings. This is useful as sometimes equivalent columns of data from different converters will be in different positions in the dataframes
 
-        # create reference strings. This is useful as sometimes equivalent columns of data from different converters will be in different positions in the dataframes
+            reflist = list()
+            if mode == 'convcompar':
+                for col in columns:
 
-        reflist = list()
-        if mode == 'convcompar':
-            for col in columns:
+                    reference = 'Converter' + '|' + variables[col].split('|')[1]
+                    reflist.append(reference)
 
-                reference = 'Converter' + '|' + DFlist[0].columns[col].split('|')[1]
-                reflist.append(reference)
+            elif mode == 'dncompar':
 
-        elif mode == 'dgcompar':
+                for col in columns:
 
-            for col in columns:
+                    reference = variables[col]
+                    reflist.append(reference)
 
-                reference = DFlist[0].columns[col]
-                reflist.append(reference)
 
-        # generate figurs, plots and subplots
-        for n in range(nfigs):
+            # generate figurs, plots and subplots
+            for n in range(nfigs):
 
-            plt.figure(n+1)
-
-            for m in range(np.prod(nsplts)):
-                plt.subplot(nsplts[0], nsplts[1], m+1)
+                plt.figure(n+1)
 
                 # a plot that is common for all DF that only needs to be plotted once
                 if kwargs.get('fixplot') == True:
@@ -97,46 +98,100 @@ def DFplot(DFlist, nsplts, mode, **kwargs):
                     fixplotcol = fixplotcol.split(',')
                     fixplotcol = list(map(int, fixplotcol))
 
-                    plt.figure(n + 1).axes[m].plot(DFlist[0].iloc[:, [kwargs.get('xaxis')]], DFlist[0].iloc[:, fixplotcol[m]],
+                    plt.figure(n + 1).axes.plot(DFlist[0].iloc[:, [kwargs.get('xaxis')]], DFlist[0].iloc[:, fixplotcol],
                                                    label=kwargs.get('seriesnames')[-1], linewidth=0.5)
 
                 #dataframe-dependent plots
                 for c in range(len(DFlist)):
 
                     targetcol = [s for s in DFlist[c].columns if reflist[n] in s]
-                    plt.figure(n+1).axes[m].plot(DFlist[c].iloc[:, [kwargs.get('xaxis')]], DFlist[c].loc[:, targetcol], label=kwargs.get('seriesnames')[c], linewidth=1.2)
+                    plt.figure(n+1).axes.plot(DFlist[c].iloc[:, [kwargs.get('xaxis')]], DFlist[c].loc[:, targetcol], label=kwargs.get('seriesnames')[c], linewidth=1.2)
 
 
                 # set up axis labels and legend
-                plt.figure(n+1).axes[m].set_xlabel(kwargs.get('xlabel'))
+                plt.figure(n+1).axes.set_xlabel(kwargs.get('xlabel'))
 
                 if 'ylabel' in kwargs.items():
 
-                    plt.figure(n+1).axes[m].set_ylabel(kwargs.get('ylabel')[n].split('|')[1])
+                    plt.figure(n+1).axes.set_ylabel(kwargs.get('ylabel')[n].split('|')[1])
 
                 else:
 
+                    plt.figure(n + 1).axes.set_ylabel(variables[columns[n]].split('|')[1])
 
-                    plt.figure(n + 1).axes[m].set_ylabel(variables[columns[n]].split('|')[1])
+                plt.figure(n+1).axes.ticklabel_format(useOffset=False)
+                plt.figure(n+1).axes.legend()
+                plt.figure(n+1).axes.yaxis.grid()
 
-                plt.figure(n+1).axes[m].ticklabel_format(useOffset=False)
-                plt.figure(n+1).axes[m].legend()
-                plt.figure(n+1).axes[m].yaxis.grid()
 
-            # save images in folder
+        elif mode == 'aggeval':
 
-            if 'savefigures' in kwargs:
+            DF = DFlist[0]
 
-                if kwargs.get('savefigures') == True:
+            escens = list(DF.columns)
+            x = np.arange(DF.shape[0])
+            color = ['b', 'g', 'r', 'y']
+            width = 0.15
+            plt.figure(1)
+
+            for esc in escens:
+                plt.bar(x + (escens.index(esc) * width) - width * 2, DF[esc], color=color[escens.index(esc)],
+                        width=width, label=esc, edgecolor='white', align='center', zorder=3)
+
+            plt.xticks(x, list(DF.index))
+            plt.xlabel('Grid variations')
+            plt.ylabel('RMSE (%)')
+
+            plt.grid(axis='y')
+            plt.legend()
+
+        elif mode == 'aggRX':
+
+            labels = ['R', 'X']
+            for n in range(len(DFlist)):
+
+                escens = list(DFlist[n].columns)
+                x = np.arange(DFlist[n].shape[0])
+                color = ['b', 'g', 'r', 'y']
+                marker = ['o', '+', 'v', 'd']
+
+                plt.figure(n)
+
+                for esc in escens:
+                    plt.plot(x, DFlist[n][esc], color=color[escens.index(esc)], marker=marker[escens.index(esc)],
+                            label=esc, linestyle='None', zorder=3)
+
+                plt.xticks(x, list(DFlist[n].index))
+                plt.xlabel('Grid variations')
+                plt.ylabel(labels[n])
+
+                plt.grid(axis='y')
+                plt.legend()
+
+
+        # save images in folder
+
+        if 'savefigures' in kwargs:
+
+            if kwargs.get('savefigures') == True:
+
+                if mode == 'convcompar' or mode == 'dncompar':
+
                     figure = plt.gcf()
                     figure.set_size_inches(14, 8)
                     plt.savefig(r'I:\05_Basanta Franco\Masterarbeit_local\images/'+ kwargs.get('figurefolder') + reflist[n].replace('|', '-').replace('/',' ').replace('\\', ' ') + '.png', dpi=600)
 
-                elif kwargs.get('savefigures') == False:
+                elif mode == 'aggeval':
 
-                    pass
+                    figure = plt.gcf()
+                    figure.set_size_inches(14, 8)
+                    plt.savefig(r'I:\05_Basanta Franco\Masterarbeit_local\images/' + kwargs.get('figurefolder'))
 
-            plt.show()
+            elif kwargs.get('savefigures') == False:
+
+                pass
+
+        plt.show()
 
         moreplots = input('Plot more variables? ')
         moreplots = moreplots == 'True'

@@ -4,6 +4,10 @@ import os
 import pandas as pd
 import math
 import functions.aggregationstudy.aggfunctions as AGF
+import functions.convcompar.datamanager as DTM
+import matplotlib.pyplot as plt
+import numpy as np
+from scipy.stats import pearsonr
 sys.path.append(r'C:\Program Files\DIgSILENT\PowerFactory 2021 SP1\Python\3.8')
 
 import powerfactory as pf
@@ -23,7 +27,7 @@ except pf.ExitError as error:
 
 # mode selection
 
-mode = 'RMSE' # RXanaylsis, RMSE
+mode = 'RXanalysis' # RXanaylsis, RMSE
 escens = ['hPV', 'hW', 'lPV', 'lW']
 
 if mode == 'RXanalysis':
@@ -44,8 +48,8 @@ if mode == 'RXanalysis':
         prj.Activate()
         networkdata = app.GetProjectFolder('netdat')
 
-        R = []
-        X = []
+        R = [None] * len(columns)
+        X = [None] * len(columns)
         for scen in columns:
 
             R[columns.index(scen)] = networkdata.GetContents('MV_' + scen)[0].GetContents('*.ElmLne')[0].GetAttribute('R1')
@@ -54,19 +58,45 @@ if mode == 'RXanalysis':
         Rdf.loc[rows[prjlist.index(prj)]] = R
         Xdf.loc[rows[prjlist.index(prj)]] = X
 
+    DTM.DFplot([Rdf,Xdf], 'aggRX',
+               savefigures=False,
+               figurefolder='grid aggregation\line_parameter/x.png')
+
 elif mode == 'RMSE':
 
-    var2plot = 'I1P'
-    scendict = {p: 0 for p in escens}
+    print('Obtaining all csv for RMSE calculation')
 
+    # selecte noramlization mode and var to plot
+    var2plot = 'I1'
+    normmode = 'commonscenario' # 'commonscenario' or 'individual'
+
+    #select controller folder
     basepath = r"I:\05_Basanta Franco\Exchange\MasterThesis\Aggregation/"
-    controller = 'constphi'
+    controller = 'constv'
     thedir = basepath + controller
 
-    subdirs = [name for name in os.listdir(thedir) if os.path.isdir(os.path.join(thedir, name))]
-    grids = {m.split('_')[0]:0 for m in subdirs}
+    print('Data in folder: ' + thedir)
 
-    for folder in subdirs: #for every grid setup
+    #select csv files in cntroller folder
+    subdirs = [name for name in os.listdir(thedir) if os.path.isdir(os.path.join(thedir, name))] #get all directory names in thedir
+    grids = [m.split('_')[0] for m in subdirs]
+
+    #initialize dataframes
+    RMSEdf = pd.DataFrame(columns=escens, index=grids)
+    normRMSE = pd.DataFrame(columns=escens, index=grids)
+
+    # initialize df depending on mode
+    if normmode == 'commonscenario':
+
+        normdf = pd.DataFrame(columns=escens, index=['max', 'min','dif'])
+
+    elif normmode == 'individual':
+
+        normdf = pd.DataFrame(columns=escens, index=grids)
+
+    # for every grid setup
+
+    for folder in subdirs:
 
         datadir = thedir + '/' + folder + '/' + '1-MVLV-rural-all-0-sw/'
 
@@ -76,13 +106,80 @@ elif mode == 'RMSE':
 
             df = pd.read_csv(os.path.join(datadir,file), delimiter=';',skiprows=[0]) # import the df
 
-            col2calc = [n for n in list(df.columns) if var2plot in n] # localize columns to be plotted
+            # common scenario normalization: find max and min of a certain scenario for all grids
 
-            RMSE = AGF.CalculateRMSE(df[col2calc[0]],df[col2calc[1]] ) # calculate rmse
-            normRMSE = RMSE/df[col2calc[0]][0] # normalize rmse
+            # what to plot
+            if var2plot == 'I1': # if we want absolute current, first we must calculated it
 
-            scendict[file.split('_')[2].split('.')[0]] = normRMSE #store rmse information in dictionary
+                activecol = [n for n in list(df.columns) if 'I1P' in n]
+                reactivecol = [n for n in list(df.columns) if 'I1Q' in n]
 
-        grids[folder.split('_')[0]] = scendict # nest dictionary with scenario info in grid dictionary
+                detcurr = np.sqrt(df[activecol[0]] ** 2 + df[reactivecol[0]] ** 2)
+                eqcurr = np.sqrt(df[activecol[1]] ** 2 + df[reactivecol[1]] ** 2)
 
+            else: # for the active and reactive current cases
+
+                col2calc = [n for n in list(df.columns) if var2plot in n] # localize columns to be plotted
+                detcurr = df[col2calc[0]]
+                eqcurr = df[col2calc[1]]
+
+            # calculate rmse
+
+            RMSE = AGF.CalculateRMSE(detcurr, eqcurr)
+
+            # way of calculating normalization min-max range: for each grid and scenario a value or for each scenario a value
+
+            if normmode == 'commonscenario':
+
+                actscen = file.split('_')[2].split('.')[0]
+
+                actmax = max(detcurr)
+                actmin = min(detcurr)
+
+                storemax = normdf.loc['max', actscen]
+                storemin = normdf.loc['min', actscen]
+
+                if (actmax > storemax) or (subdirs.index(folder) == 0): # if present current value is bigger than stored for scenario or if it is the first grid
+
+                    normdf.loc['max',actscen] = actmax
+
+                else:
+                    pass
+
+                if actmin < storemin or (subdirs.index(folder) == 0): # if present current value is smaller than stored for scenario or if it is the first grid
+
+                    normdf.loc['min', actscen] = actmin
+
+                else:
+                    pass
+
+                normdf.loc['dif',actscen] = abs(normdf.loc['max',actscen] - normdf.loc['min',actscen])
+
+
+            elif normmode == 'individual':
+
+                normvalue = abs(max(detcurr)-min(detcurr))
+                normdf.loc[folder.split('_')[0], escens[targetcsv.index(file)]] = normvalue
+
+
+            RMSEdf.loc[folder.split('_')[0], escens[targetcsv.index(file)]] = RMSE
+
+    # normalize RMSE
+    if normmode == 'commonscenario':
+
+        for index,row in RMSEdf.iterrows():
+
+            normRMSE.loc[index] = (row / normdf.loc['dif'])*100
+
+    elif normmode == 'individual':
+
+        normRMSE = (RMSEdf/normdf)*100
+
+    print('RMSE calculated and stored in dataframe')
+
+
+
+    DTM.DFplot([normRMSE], 'aggeval',
+                savefigures=True,
+                figurefolder= 'grid aggregation\Vdip_0,5_RMSE/' + mode + '_' + var2plot + '_' + controller + '.png')
 
