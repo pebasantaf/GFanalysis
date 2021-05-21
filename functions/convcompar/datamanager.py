@@ -147,7 +147,7 @@ def DFplot(DFlist, mode, **kwargs):
 
         elif mode == 'aggRX':
 
-            labels = ['R', 'X']
+            labels = ['R (Ohm)', 'X (Ohm)']
             for n in range(len(DFlist)):
 
                 escens = list(DFlist[n].columns)
@@ -165,7 +165,7 @@ def DFplot(DFlist, mode, **kwargs):
                 plt.xlabel('Grid variations')
                 plt.ylabel(labels[n])
 
-                plt.grid(axis='y')
+                plt.grid()
                 plt.legend()
 
 
