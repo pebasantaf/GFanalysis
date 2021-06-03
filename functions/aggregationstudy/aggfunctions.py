@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import os
+import sys
 
 def CalculateRMSE(I_det, I_eq):
     return np.sqrt((1 /len(I_det)) * np.sum((I_det-I_eq)**2))
@@ -12,6 +13,11 @@ def RXanalysis(app, vlevel, controller, escens):
 
     # get relevant projects
     prjlist = [s for s in allprj if '_eq_' + controller in s.GetFullName()]
+
+    gfall = prjlist[4]
+    prjlist.remove(gfall)
+    prjlist.insert(0, gfall)
+
     columns = escens
     rows = [r.GetFullName().split('\\')[-1].split('_')[1] for r in prjlist]
 
@@ -32,12 +38,21 @@ def RXanalysis(app, vlevel, controller, escens):
             print('Collecting R, X and C parameter from PowerFactory')
 
         for scen in columns:
-            R[columns.index(scen)] = networkdata.GetContents(vlevel + '_' + scen)[0].GetContents('*.ElmLne')[
-                0].GetAttribute('R1')
-            X[columns.index(scen)] = networkdata.GetContents(vlevel + '_' + scen)[0].GetContents('*.ElmLne')[
-                0].GetAttribute('X1')
-            C[columns.index(scen)] = networkdata.GetContents(vlevel + '_' + scen)[0].GetContents('*.ElmLne')[
-                0].GetAttribute('C1')
+
+            if vlevel == 'MV':
+
+                R[columns.index(scen)] = networkdata.GetContents(vlevel + '_' + scen)[0].GetContents('*.ElmLne')[
+                    0].GetAttribute('R1')
+                X[columns.index(scen)] = networkdata.GetContents(vlevel + '_' + scen)[0].GetContents('*.ElmLne')[
+                    0].GetAttribute('X1')
+                C[columns.index(scen)] = networkdata.GetContents(vlevel + '_' + scen)[0].GetContents('*.ElmLne')[
+                    0].GetAttribute('C1')
+
+            else:
+
+                R[columns.index(scen)] = networkdata.GetContents(vlevel + '_eq_' + scen)[0].GetContents('*.ElmLne')[0].GetAttribute('R1')
+                X[columns.index(scen)] = networkdata.GetContents(vlevel + '_eq_' + scen)[0].GetContents('*.ElmLne')[0].GetAttribute('X1')
+                C[columns.index(scen)] = networkdata.GetContents(vlevel + '_eq_' + scen)[0].GetContents('*.ElmLne')[0].GetAttribute('C1')
 
         Rdf.loc[rows[prjlist.index(prj)]] = R
         Xdf.loc[rows[prjlist.index(prj)]] = X
@@ -53,7 +68,12 @@ def RMSEanalysis(var2plot, normmode, basepath, controller, escens):
 
     # select csv files in cntroller folder
     subdirs = [name for name in os.listdir(thedir) if
-               os.path.isdir(os.path.join(thedir, name))]  # get all directory names in thedir
+               os.path.isdir(os.path.join(thedir, name))]# get all directory names in thedir
+
+    gfall = subdirs[4]
+    subdirs.remove(gfall)
+    subdirs.insert(0,gfall)
+
     grids = [m.split('_')[0] for m in subdirs]
 
     # initialize dataframes

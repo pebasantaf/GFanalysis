@@ -140,7 +140,7 @@ def DFplot(DFlist, mode, **kwargs):
 
             plt.xticks(x, list(DF.index))
             plt.xlabel('Grid variations')
-            plt.ylabel('RMSE (%)')
+            plt.ylabel('RMSE/%')
 
             plt.grid(axis='y')
             plt.legend()
@@ -149,7 +149,7 @@ def DFplot(DFlist, mode, **kwargs):
 
         elif mode == 'aggRX':
 
-            labels = ['R (Ohm)', 'X (Ohm)', 'C (nF)']
+            labels = ['R/$\Omega$', 'X/$\Omega$', 'C/nF']
             for n in range(len(DFlist)):
 
                 escens = list(DFlist[n].columns)
@@ -170,7 +170,7 @@ def DFplot(DFlist, mode, **kwargs):
                 plt.grid()
                 plt.legend()
 
-                SaveFigures(mode, labels[n].split(' ')[0] + '.png', kwargs)
+                SaveFigures(mode, labels[n].split('/')[0] + '.png', kwargs)
 
         # save images in folder
 
@@ -221,9 +221,15 @@ def ReadorCreatePath(filemode, **kwargs):
         directory = os.getcwd() + "\\Results" + kwargs.get('folder')
 
         if not os.path.isdir(directory):
+
             os.mkdir(directory)
 
-        path = directory + kwargs.get('filename')
+        if 'filname' in kwargs:
+
+            path = directory + kwargs.get('filename')
+        else:
+
+            path = directory
 
         return path
 
