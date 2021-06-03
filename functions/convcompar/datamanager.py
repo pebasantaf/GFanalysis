@@ -130,7 +130,7 @@ def DFplot(DFlist, mode, **kwargs):
 
             escens = list(DF.columns)
             x = np.arange(DF.shape[0])
-            color = ['b', 'g', 'r', 'y']
+            color = [(143/255, 25/255, 176/255), (252/255, 203/255, 86/255), (211/255, 61/255, 252/255), (35/255, 176/255, 122/255)]
             width = 0.15
             plt.figure(1)
 
@@ -140,56 +140,39 @@ def DFplot(DFlist, mode, **kwargs):
 
             plt.xticks(x, list(DF.index))
             plt.xlabel('Grid variations')
-            plt.ylabel('RMSE (%)')
+            plt.ylabel('RMSE/%')
 
             plt.grid(axis='y')
             plt.legend()
 
+            SaveFigures(mode,'', kwargs)
+
         elif mode == 'aggRX':
 
-            labels = ['R', 'X']
+            labels = ['R/$\Omega$', 'X/$\Omega$', 'C/nF']
             for n in range(len(DFlist)):
 
                 escens = list(DFlist[n].columns)
                 x = np.arange(DFlist[n].shape[0])
-                color = ['b', 'g', 'r', 'y']
+                color = [(143/255, 25/255, 176/255), (252/255, 203/255, 86/255), (211/255, 61/255, 252/255), (35/255, 176/255, 122/255)]
                 marker = ['o', '+', 'v', 'd']
 
                 plt.figure(n)
 
                 for esc in escens:
-                    plt.plot(x, DFlist[n][esc], color=color[escens.index(esc)], marker=marker[escens.index(esc)],
+                    plt.plot(x, DFlist[n][esc], color=color[escens.index(esc)], marker=marker[escens.index(esc)], markeredgewidth = 2,
                             label=esc, linestyle='None', zorder=3)
 
                 plt.xticks(x, list(DFlist[n].index))
                 plt.xlabel('Grid variations')
                 plt.ylabel(labels[n])
 
-                plt.grid(axis='y')
+                plt.grid()
                 plt.legend()
 
+                SaveFigures(mode, labels[n].split('/')[0] + '.png', kwargs)
 
         # save images in folder
-
-        if 'savefigures' in kwargs:
-
-            if kwargs.get('savefigures') == True:
-
-                if mode == 'convcompar' or mode == 'dncompar':
-
-                    figure = plt.gcf()
-                    figure.set_size_inches(14, 8)
-                    plt.savefig(r'I:\05_Basanta Franco\Masterarbeit_local\images/'+ kwargs.get('figurefolder') + reflist[n].replace('|', '-').replace('/',' ').replace('\\', ' ') + '.png', dpi=600)
-
-                elif mode == 'aggeval':
-
-                    figure = plt.gcf()
-                    figure.set_size_inches(14, 8)
-                    plt.savefig(r'I:\05_Basanta Franco\Masterarbeit_local\images/' + kwargs.get('figurefolder'))
-
-            elif kwargs.get('savefigures') == False:
-
-                pass
 
         plt.show()
 
@@ -200,6 +183,35 @@ def DFplot(DFlist, mode, **kwargs):
 
             sys.exit('Answer can only be boolean')
 
+def SaveFigures(mode, figurename, kwargs):
+
+    if 'savefigures' in kwargs:
+
+        if kwargs.get('savefigures') == True:
+
+            if mode == 'convcompar' or mode == 'dncompar':
+
+                figure = plt.gcf()
+                figure.set_size_inches(14, 8)
+                plt.savefig(r'I:\05_Basanta Franco\Masterarbeit_local\images/' + kwargs.get('figurefolder') + reflist[
+                    n].replace('|', '-').replace('/', ' ').replace('\\', ' ') + '.png', dpi=600)
+
+            elif mode == 'aggeval':
+
+                figure = plt.gcf()
+                figure.set_size_inches(14, 8)
+                plt.savefig(r'I:\05_Basanta Franco\Masterarbeit_local\images/' + kwargs.get('figurefolder'))
+
+            elif mode == 'aggRX':
+
+                figure = plt.gcf()
+                figure.set_size_inches(14, 8)
+                plt.savefig(r'I:\05_Basanta Franco\Masterarbeit_local\images/' + kwargs.get('figurefolder') + figurename)
+
+
+        elif kwargs.get('savefigures') == False:
+
+            pass
 
 
 def ReadorCreatePath(filemode, **kwargs):
@@ -209,9 +221,15 @@ def ReadorCreatePath(filemode, **kwargs):
         directory = os.getcwd() + "\\Results" + kwargs.get('folder')
 
         if not os.path.isdir(directory):
+
             os.mkdir(directory)
 
-        path = directory + kwargs.get('filename')
+        if 'filname' in kwargs:
+
+            path = directory + kwargs.get('filename')
+        else:
+
+            path = directory
 
         return path
 
