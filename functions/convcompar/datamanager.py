@@ -43,7 +43,7 @@ def DFplot(DFlist, mode, **kwargs):
         # xaxis: which column should be the xaxis
         # seriesname: names for legend
         # xlabel: name for x axis
-        # ylable: name for y axis
+        # ylabel: name for y axis
         # savefigures: save plotted figures in folder
         # figurefolder
 
@@ -188,6 +188,19 @@ def DFplot(DFlist, mode, **kwargs):
 
                 SaveFigures(mode, labels[n].split('/')[0] + '.png', kwargs)
 
+        elif mode == 'enveloping':
+
+            plt.figure(0)
+
+            for col in DFlist[1].columns[1:]:
+
+                 plt.plot(DFlist[1].loc[:,DFlist[1].columns[0]], DFlist[1].loc[:,col], linewidth=0.5, alpha=0.2, color='c')
+
+            plt.plot(DFlist[1].loc[:, DFlist[1].columns[0]], DFlist[0].loc[:, 'max'], linewidth=2, color='r')
+            plt.plot(DFlist[1].loc[:, DFlist[1].columns[0]], DFlist[0].loc[:, 'min'], linewidth=2, color='r')
+
+            plt.xlabel('Time/s')
+            plt.ylabel(kwargs.get('ylabel'))
         # save images in folder
 
         plt.show()
@@ -198,6 +211,9 @@ def DFplot(DFlist, mode, **kwargs):
         if moreplots != True and moreplots != False:
 
             sys.exit('Answer can only be boolean')
+
+
+
 
 def SaveFigures(mode, figurename, kwargs):
 
@@ -226,6 +242,13 @@ def SaveFigures(mode, figurename, kwargs):
                 figure.set_size_inches(14, 8)
                 plt.savefig(r'I:\05_Basanta Franco\Masterarbeit_local\images/' + kwargs.get('figurefolder') + figurename)
 
+            elif mode == 'enveloping':
+
+                figure = plt.gcf()
+                figure.set_size_inches(7, 5.25)
+                plt.savefig(kwargs.get('figurefolder'),
+                    bbox_inches='tight',
+                    pad_inches=0)
 
         elif kwargs.get('savefigures') == False:
 

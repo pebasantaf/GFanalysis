@@ -6,6 +6,7 @@ import functions.convcompar.datamanager as DTM
 import numpy as np
 import functions.convcompar.PFmanager as PFM
 import datetime
+import pandas as pd
 
 if os.getlogin() != 'Pedro':
     sys.path.append(r'C:\Program Files\DIgSILENT\PowerFactory 2021 SP1\Python\3.8')
@@ -27,7 +28,7 @@ if os.getlogin() != 'Pedro':
 
 # mode selection
 
-mode = 'RMSE' # RXanaylsis, RMSE, multievent
+mode = 'multievent' # RXanaylsis, RMSE, multievent, enveloping
 escens = ['hPV', 'hW', 'lPV', 'lW']
 
 #available analysis to be made
@@ -77,7 +78,7 @@ elif mode == 'multievent':
 
     elif pathmode == 'Read':
 
-        basepath = DTM.ReadorCreatePath('Read', readmode='lastfile')
+        basepath = DTM.ReadorCreatePath('Read', readmode='userfile', folder='31.05.2021_13-44-25_vdip_constv_AG/', filename='')
 
     else:
 
@@ -101,8 +102,8 @@ elif mode == 'multievent':
 
     # get relevant projects
     prjlist = [s for s in allprj if '_eq_' + controller in s.GetFullName()]
-    prjlist = prjlist[3:]
-    escens  = escens[3:]
+    prjlist = prjlist[4:]
+    escens = escens
     # for every project of the specified controller
     for prj in prjlist:
 
@@ -137,5 +138,40 @@ elif mode == 'multievent':
 
 elif mode == 'enveloping':
 
+
+    submode = None
     grid = '1-MVLV-rural-all-0-sw_SynAll_constv'
-    
+    var2plot = ['u1', 'i1P', 'i1Q']
+    units = ['pu', 'kA', 'kA']
+    var = var2plot[0]
+    label = var + '/' + units[var2plot.index(var)]
+
+    project = app.GetCurrentUser().GetContents(grid)[0]
+    project.Activate()
+
+    app.GetProjectFolder('scen').GetContents('hW')[0].Activate()
+
+    if submode == 'Createcsv':
+
+        basepath = DTM.ReadorCreatePath('Create', folder=datetime.datetime.now().strftime("\\%d.%m.%Y_%H-%M-%S") + '_EV\\')
+
+
+        PFM.RunNSave(app, True, tstop=1, path=basepath + 'enveloping_ubus.csv')
+
+    else:
+
+        df = DTM.importData(r"I:\05_Basanta Franco\Masterarbeit_local\GFanalysis\Results\04.06.2021_17-04-49_EV\enveloping_ubus.csv")
+        enveldf = pd.DataFrame(columns=['max', 'min'])
+
+        col2plot = [s for s in list(df.columns) if var in s]
+        allvaluesdf = df.loc[:, col2plot]
+        allvaluesdf.insert(0, df.columns[0], df.loc[:, df.columns[0]])
+
+        for i in range(df.shape[0]):
+
+            enveldf.loc[i, 'max'] = max(df.loc[i, col2plot])
+            enveldf.loc[i, 'min'] = min(df.loc[i, col2plot])
+
+        dflist = [enveldf, allvaluesdf]
+
+        DTM.DFplot(dflist,'enveloping', ylabel=label)
