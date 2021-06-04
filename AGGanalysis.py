@@ -99,8 +99,8 @@ elif mode == 'multievent':
 
     # get relevant projects
     prjlist = [s for s in allprj if '_eq_' + controller in s.GetFullName()]
-    prjlist = prjlist[2:]
-
+    prjlist = prjlist[3:]
+    escens  = escens[3:]
     # for every project of the specified controller
     for prj in prjlist:
 
@@ -132,3 +132,8 @@ elif mode == 'multievent':
 
                 print('Running simulation and saving results')
                 PFM.RunNSave(app, True, tstop=1, path=basepath + '{project}_{scenario}_{eventype}_{value}.csv'.format(project=prj.GetAttribute('loc_name'), scenario=scen, eventype=eventype, value=val))
+
+elif mode == 'enveloping':
+
+    grid = '1-MVLV-rural-all-0-sw_SynAll_constv'
+    
