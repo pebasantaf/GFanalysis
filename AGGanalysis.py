@@ -1,4 +1,5 @@
 import sys
+import os
 import time
 import functions.aggregationstudy.aggfunctions as AGF
 import functions.convcompar.datamanager as DTM
@@ -6,26 +7,27 @@ import numpy as np
 import functions.convcompar.PFmanager as PFM
 import datetime
 
-sys.path.append(r'C:\Program Files\DIgSILENT\PowerFactory 2021 SP1\Python\3.8')
+if os.getlogin() != 'Pedro':
+    sys.path.append(r'C:\Program Files\DIgSILENT\PowerFactory 2021 SP1\Python\3.8')
 
-import powerfactory as pf
+    import powerfactory as pf
 
 
-start = time.asctime()
-print(start)
+    start = time.asctime()
+    print(start)
 
-#Initiate powerfactory. In case there is an error, will give the error code number
-try:
-    app = pf.GetApplicationExt(None, None, r"/ini C:\Users\ge25bod\config.ini")
-    # ... some      calculations ...
-except pf.ExitError as error:
-    print(error)
-    print('error.code = %d' % error.code)
-    print('error.code = %d' % error.code)
+    #Initiate powerfactory. In case there is an error, will give the error code number
+    try:
+        app = pf.GetApplicationExt(None, None, r"/ini C:\Users\ge25bod\config.ini")
+        # ... some      calculations ...
+    except pf.ExitError as error:
+        print(error)
+        print('error.code = %d' % error.code)
+        print('error.code = %d' % error.code)
 
 # mode selection
 
-mode = 'multievent' # RXanaylsis, RMSE, multievent
+mode = 'RMSE' # RXanaylsis, RMSE, multievent
 escens = ['hPV', 'hW', 'lPV', 'lW']
 
 #available analysis to be made
@@ -51,14 +53,14 @@ elif mode == 'RMSE':
     normmode = 'commonscenario' # 'commonscenario' or 'individual'
 
     #select controller folder
-    basepath = r"I:\05_Basanta Franco\Exchange\MasterThesis\Aggregation/"
+    basepath = r"C:\Users\Usuario\Documents\Universidad\TUM\Subjects\5th semester\Masterarbeit\Code_and_data\aggresults/"
     controller = 'constv'
 
     normRMSE = AGF.RMSEanalysis(var2plot,normmode,basepath,controller,escens)
 
     DTM.DFplot([normRMSE], 'aggeval',
                 savefigures=True,
-                figurefolder= 'grid aggregation\Vdip_0,5_RMSE/' + mode + '_' + var2plot + '_' + controller + '.png')
+                figurefolder= 'grid aggregation\Vdip_0,5_RMSE/' + mode + '_' + var2plot + '_' + controller + '.pdf')
 
 
 elif mode == 'multievent':

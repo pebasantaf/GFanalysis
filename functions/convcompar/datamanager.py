@@ -134,17 +134,33 @@ def DFplot(DFlist, mode, **kwargs):
             width = 0.15
             plt.figure(1)
 
+            fontsize = 9
+            params = {'legend.fontsize': fontsize,
+                      'figure.titlesize': fontsize,
+                      'axes.labelsize': fontsize,
+                      'axes.titlesize': fontsize,
+                      'xtick.labelsize': fontsize,
+                      'ytick.labelsize': fontsize,
+                      'font.family': 'Times New Roman',
+                      'legend.frameon': '0',
+                      'legend.columnspacing': '1'}
+            for attr, val in params.items():
+                plt.rcParams[attr] = val
+
             for esc in escens:
                 plt.bar(x + (escens.index(esc) * width) - width * 2, DF[esc], color=color[escens.index(esc)],
                         width=width, label=esc, edgecolor='white', align='center', zorder=3)
 
             plt.xticks(x, list(DF.index))
+            plt.ylim([0,5])
             plt.xlabel('Grid variations')
             plt.ylabel('RMSE/%')
 
+            plt.tight_layout()
+
             plt.grid(axis='y')
             plt.legend()
-
+            plt.rcParams["figure.figsize"] = [5.86, 4.39]
             SaveFigures(mode,'', kwargs)
 
         elif mode == 'aggRX':
@@ -199,8 +215,10 @@ def SaveFigures(mode, figurename, kwargs):
             elif mode == 'aggeval':
 
                 figure = plt.gcf()
-                figure.set_size_inches(14, 8)
-                plt.savefig(r'I:\05_Basanta Franco\Masterarbeit_local\images/' + kwargs.get('figurefolder'))
+                figure.set_size_inches(7, 5.25)
+                plt.savefig(r"C:\Users\Usuario\Documents\Universidad\TUM\Subjects\5th semester\Masterarbeit\Code_and_data\aggresults\pics/" + kwargs.get('figurefolder'),
+                            bbox_inches='tight',
+                            pad_inches=0)
 
             elif mode == 'aggRX':
 
