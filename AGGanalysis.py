@@ -78,7 +78,7 @@ elif mode == 'multievent':
 
     elif pathmode == 'Read':
 
-        basepath = DTM.ReadorCreatePath('Read', readmode='userfile', folder='31.05.2021_13-44-25_vdip_constv_AG/', filename='')
+        basepath = DTM.ReadorCreatePath('Read', readmode='userfile', folder='/31.05.2021_13-44-25_vdip_constv_AG/', filename='')
 
     else:
 
@@ -107,7 +107,7 @@ elif mode == 'multievent':
     # for every project of the specified controller
     for prj in prjlist:
 
-        print('Activating ' + prj.GetAttribute('loc_name') + ' project')
+        print('PROJECT: Activating ' + prj.GetAttribute('loc_name') + ' project')
         prj.Activate() # activate
 
         # for each of the for scenarios
@@ -115,7 +115,7 @@ elif mode == 'multievent':
 
             # get active study case
             actcase = app.GetProjectFolder('study').GetContents('MV_'+scen+'.IntCase')[0]
-            print('Activating MV_' + scen + ' study case')
+            print('STUDY CASE: Activating MV_' + scen + ' study case')
             actcase.Activate()
 
             #get VS from detailed and equivalent grids for given scenario
