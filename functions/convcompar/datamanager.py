@@ -192,6 +192,19 @@ def DFplot(DFlist, mode, **kwargs):
 
             plt.figure(0)
 
+            fontsize = 11
+            params = {'legend.fontsize': fontsize,
+                      'figure.titlesize': fontsize,
+                      'axes.labelsize': fontsize,
+                      'axes.titlesize': fontsize,
+                      'xtick.labelsize': fontsize,
+                      'ytick.labelsize': fontsize,
+                      'font.family': 'Times New Roman',
+                      'legend.frameon': '0',
+                      'legend.columnspacing': '1'}
+            for attr, val in params.items():
+                plt.rcParams[attr] = val
+
             for col in DFlist[1].columns[1:]:
 
                  plt.plot(DFlist[1].loc[:,DFlist[1].columns[0]], DFlist[1].loc[:,col], linewidth=0.5, alpha=0.2, color='c')

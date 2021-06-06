@@ -1,6 +1,9 @@
 import sys
 import os
 import time
+import statistics
+import matplotlib.pyplot as plt
+
 import functions.aggregationstudy.aggfunctions as AGF
 import functions.convcompar.datamanager as DTM
 import numpy as np
@@ -28,7 +31,7 @@ if os.getlogin() != 'Pedro':
 
 # mode selection
 
-mode = 'multievent' # RXanaylsis, RMSE, multievent, enveloping
+mode = 'enveloping' # RXanaylsis, RMSE, multievent, enveloping
 escens = ['hPV', 'hW', 'lPV', 'lW']
 
 #available analysis to be made
@@ -47,6 +50,8 @@ if mode == 'RXanalysis':
 
 elif mode == 'RMSE':
 
+    submode = 'boxplot'
+
     print('Obtaining all csv for RMSE calculation')
 
     # selecte noramlization mode and var to plot
@@ -55,13 +60,128 @@ elif mode == 'RMSE':
 
     #select controller folder
     basepath = r"C:\Users\Usuario\Documents\Universidad\TUM\Subjects\5th semester\Masterarbeit\Code_and_data\aggresults/"
-    controller = 'constv'
+    controller = ['constv', 'constphi']
+    cont = controller[0]
 
-    normRMSE = AGF.RMSEanalysis(var2plot,normmode,basepath,controller,escens)
+    if submode == 'barplot':
 
-    DTM.DFplot([normRMSE], 'aggeval',
-                savefigures=True,
-                figurefolder= 'grid aggregation\Vdip_0,5_RMSE/' + mode + '_' + var2plot + '_' + controller + '.pdf')
+        normRMSE = AGF.RMSEanalysis(var2plot, normmode, basepath, cont, escens)
+        DTM.DFplot([normRMSE], 'aggeval',
+                    savefigures=True,
+                    figurefolder= 'grid aggregation\Vdip_0,5_RMSE/' + mode + '_' + var2plot + '_' + cont + '.pdf')
+
+    elif submode == 'boxplot':
+
+        normRMSEv = AGF.RMSEanalysis(var2plot, normmode, basepath, controller[0], escens)
+        normRMSEphi = AGF.RMSEanalysis(var2plot, normmode, basepath, controller[1], escens)
+
+        setup = 'constvconstphi' #constvconstphi, GFMdepth, scenario
+
+        plt.figure(0)
+
+        fontsize = 9
+        params = {'legend.fontsize': fontsize,
+                  'figure.titlesize': fontsize,
+                  'axes.labelsize': fontsize,
+                  'axes.titlesize': fontsize,
+                  'xtick.labelsize': fontsize,
+                  'ytick.labelsize': fontsize,
+                  'font.family': 'Times New Roman',
+                  'legend.frameon': '0',
+                  'legend.columnspacing': '1'}
+        for attr, val in params.items():
+            plt.rcParams[attr] = val
+
+        if setup == 'constvconstphi':
+
+            concv = list(normRMSEv.loc[:, 'hPV']) + list(normRMSEv.loc[:, 'hW']) + list(normRMSEv.loc[:, 'hW']) + list(
+                normRMSEv.loc[:, 'lPV']) + list(normRMSEv.loc[:, 'lW'])
+            concphi = list(normRMSEphi.loc[:, 'hPV']) + list(normRMSEphi.loc[:, 'hW']) + list(normRMSEphi.loc[:, 'hW']) + list(
+                normRMSEphi.loc[:, 'lPV']) + list(normRMSEphi.loc[:, 'lW'])
+
+            box = plt.boxplot([concv, concphi], patch_artist=True)
+            plt.violinplot([concv, concphi], )
+
+            colors = ['c', 'c']
+            for patch, color in zip(box['boxes'], colors):
+                patch.set_facecolor(color)
+
+            plt.grid(axis='y')
+            plt.xticks([1, 2], controller)
+            plt.xlabel('Local controller')
+            plt.ylabel('RMSE/%')
+            plt.show()
+
+        elif setup == 'GFMdepth':
+
+            alllist = []
+            onelist = []
+            mvlist = []
+            lvlist = []
+
+            dtfs = [normRMSEv, normRMSEphi]
+
+            for dtf in dtfs:
+
+                for index,row in dtf.iterrows():
+
+                    if index == 'GFLAll':
+
+                        continue
+
+                    elif ('All' in index) and (index != 'GFLAll'):
+
+                        alllist = alllist + row.to_list()
+
+                    elif 'MV' in index:
+
+                        mvlist = mvlist + row.to_list()
+
+                    elif 'LV' in index:
+
+                        lvlist = lvlist + row.to_list()
+
+                    else:
+
+                        onelist = onelist + row.to_list()
+
+            plt.boxplot([alllist,  lvlist,mvlist, onelist])
+            plt.violinplot([alllist,  lvlist,mvlist, onelist])
+            plt.xticks([1, 2, 3, 4], ['GFMAll', 'GFMLV', 'GMFMV', 'GFM1'])
+            plt.xlabel('Depth of GFM integration')
+            plt.ylabel('RMSE/%')
+            plt.grid(axis='y')
+            plt.show()
+
+        elif setup == 'scenario':
+
+            dtfs = [normRMSEv, normRMSEphi]
+            hPV = []
+            hW = []
+            lPV = []
+            lW = []
+
+            for dtf in dtfs:
+
+                hPV = hPV + list(dtf.loc[:,'hPV'])
+                hW = hW + list(dtf.loc[:, 'hW'])
+                lPV = lPV + list(dtf.loc[:,'lPV'])
+                lW = lW + list(dtf.loc[:, 'lW'])
+
+            plt.boxplot([hPV,hW,lPV,lW])
+            violing = plt.violinplot([hPV, hW, lPV, lW])
+
+            for pc in violing['bodies']:
+                pc.set_facecolor('cyan')
+                pc.set_edgecolor('red')
+
+            plt.xticks([1,2,3,4], escens)
+            plt.xlabel('Scenario')
+            plt.ylabel('RMSE/%')
+            plt.grid(axis='y')
+            plt.show()
+
+
 
 
 elif mode == 'multievent':
@@ -143,24 +263,23 @@ elif mode == 'enveloping':
     grid = '1-MVLV-rural-all-0-sw_SynAll_constv'
     var2plot = ['u1', 'i1P', 'i1Q']
     units = ['pu', 'kA', 'kA']
-    var = var2plot[0]
+    var = var2plot[2]
     label = var + '/' + units[var2plot.index(var)]
-
-    project = app.GetCurrentUser().GetContents(grid)[0]
-    project.Activate()
-
-    app.GetProjectFolder('scen').GetContents('hW')[0].Activate()
 
     if submode == 'Createcsv':
 
-        basepath = DTM.ReadorCreatePath('Create', folder=datetime.datetime.now().strftime("\\%d.%m.%Y_%H-%M-%S") + '_EV\\')
+        project = app.GetCurrentUser().GetContents(grid)[0]
+        project.Activate()
 
+        app.GetProjectFolder('scen').GetContents('hW')[0].Activate()
+
+        basepath = DTM.ReadorCreatePath('Create', folder=datetime.datetime.now().strftime("\\%d.%m.%Y_%H-%M-%S") + '_EV\\')
 
         PFM.RunNSave(app, True, tstop=1, path=basepath + 'enveloping_ubus.csv')
 
     else:
 
-        df = DTM.importData(r"I:\05_Basanta Franco\Masterarbeit_local\GFanalysis\Results\04.06.2021_17-04-49_EV\enveloping_ubus.csv")
+        df = DTM.importData(r"C:\Users\Usuario\Documents\Universidad\TUM\Subjects\5th semester\Masterarbeit\Code_and_data\aggresults\04.06.2021_17-04-49_EV\enveloping_ubus.csv")
         enveldf = pd.DataFrame(columns=['max', 'min'])
 
         col2plot = [s for s in list(df.columns) if var in s]
