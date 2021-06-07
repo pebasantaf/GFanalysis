@@ -38,15 +38,24 @@ escens = ['hPV', 'hW', 'lPV', 'lW']
 
 if mode == 'RXanalysis':
 
-    vlevel = 'LV4'
-    controller = 'constphi'
+    submode = 'barplot'
 
-    Rdf, Xdf, Cdf = AGF.RXanalysis(app, vlevel, controller, escens)
+    if submode == 'barplot':
+
+        vlevel = 'MV'
+        controller = 'constphi'
+
+        Rdf, Xdf, Cdf = AGF.RXanalysis(app, vlevel, controller, escens)
 
 
-    DTM.DFplot([Rdf,Xdf, Cdf], 'aggRX',
-               savefigures=True,
-               figurefolder='grid aggregation\line_parameter/' + vlevel + controller)
+        DTM.DFplot([Rdf,Xdf, Cdf], 'aggRX',
+                   savefigures=True,
+                   figurefolder='grid aggregation\line_parameter/' + vlevel + controller)
+
+    #elif submode == 'boxplot':
+
+
+
 
 elif mode == 'RMSE':
 
