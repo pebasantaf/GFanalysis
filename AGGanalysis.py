@@ -31,7 +31,7 @@ if os.getlogin() != 'Pedro':
 
 # mode selection
 
-mode = 'enveloping' # RXanaylsis, RMSE, multievent, enveloping
+mode = 'RMSE' # RXanaylsis, RMSE, multievent, enveloping
 escens = ['hPV', 'hW', 'lPV', 'lW']
 
 #available analysis to be made
@@ -84,7 +84,7 @@ elif mode == 'RMSE':
         normRMSEv = AGF.RMSEanalysis(var2plot, normmode, basepath, controller[0], escens)
         normRMSEphi = AGF.RMSEanalysis(var2plot, normmode, basepath, controller[1], escens)
 
-        setup = 'constvconstphi' #constvconstphi, GFMdepth, scenario
+        setup = 'converter' #constvconstphi, GFMdepth, scenario
 
         plt.figure(0)
 
@@ -190,7 +190,36 @@ elif mode == 'RMSE':
             plt.grid(axis='y')
             plt.show()
 
+        elif setup == 'converter':
 
+            dtfs = [normRMSEv, normRMSEphi]
+            dro = []
+            syn = []
+            vsm = []
+
+            for dtf in dtfs:
+
+                for index,row in dtf.iterrows():
+
+                    if index == 'GFLAll':
+
+                        continue
+
+                    elif 'Dro' in index:
+
+                        dro = dro + row.to_list()
+
+                    elif 'Syn' in index:
+
+                        syn = syn + row.to_list()
+
+                    elif 'VSM' in index:
+
+                        vsm = vsm + row.to_list()
+
+            plt.boxplot([dro,syn,vsm])
+            plt.xticks([1,2,3], ['Dro', 'Syn', 'VSM'])
+            plt.show()
 
 
 elif mode == 'multievent':
@@ -270,9 +299,9 @@ elif mode == 'enveloping':
 
     submode = None
     grid = '1-MVLV-rural-all-0-sw_SynAll_constv'
-    var2plot = ['u1', 'i1P', 'i1Q']
+    var2plot = ['u1', 'I1P', 'I1Q']
     units = ['pu', 'kA', 'kA']
-    var = var2plot[2]
+    var = var2plot[1]
     label = var + '/' + units[var2plot.index(var)]
 
     if submode == 'Createcsv':
@@ -288,7 +317,7 @@ elif mode == 'enveloping':
 
     else:
 
-        df = DTM.importData(r"C:\Users\Usuario\Documents\Universidad\TUM\Subjects\5th semester\Masterarbeit\Code_and_data\aggresults\04.06.2021_17-04-49_EV\enveloping_ubus.csv")
+        df = DTM.importData(r"C:\Users\Usuario\Documents\Universidad\TUM\Subjects\5th semester\Masterarbeit\Code_and_data\aggresults\07.06.2021_11-19-02_EV\enveloping_ubus1-MVLV-rural-all-0-sw_VSMAll_constvhPV.csv")
         enveldf = pd.DataFrame(columns=['max', 'min'])
 
         col2plot = [s for s in list(df.columns) if var in s]
