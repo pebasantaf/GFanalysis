@@ -287,7 +287,7 @@ elif mode == 'multievent':
                 #if this event is a voltage dip
                 if eventype == 'vdip':
                     detVS.GetAttribute('c_pmod').GetAttribute('sig_conditioning').SetAttribute('Vldip', val)
-                    detVS.GetAttribute('c_pmod').GetAttribute('sig_conditioning').SetAttribute('Vldip', val)
+                    eqVS.GetAttribute('c_pmod').GetAttribute('sig_conditioning').SetAttribute('Vldip', val)
 
                 # run simulation and save csv in Results folder
 
