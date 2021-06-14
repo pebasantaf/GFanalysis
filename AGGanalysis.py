@@ -31,14 +31,15 @@ if os.getlogin() != 'Pedro':
 
 # mode selection
 
-mode = 'RMSE' # RXanaylsis, RMSE, multievent, enveloping
+mode = 'multievent' # RXanaylsis, RMSE, multievent, enveloping
 escens = ['hPV', 'hW', 'lPV', 'lW']
 
 #available analysis to be made
 
 if mode == 'RXanalysis':
 
-    submode = 'barplot'
+    submode = 'boxplot'
+    setup = 'GFMdepth'
 
     if submode == 'barplot':
 
@@ -52,7 +53,46 @@ if mode == 'RXanalysis':
                    savefigures=True,
                    figurefolder='grid aggregation\line_parameter/' + vlevel + controller)
 
-    #elif submode == 'boxplot':
+    elif submode == 'boxplot':
+
+        vlevel = 'MV'
+        controllers = ['constphi', 'constv']
+
+        R = [None]*2
+        X = [None]*2
+        C = [None]*2
+
+        for controller in controllers:
+
+            i = controllers.index(controller)
+
+            Rdf, Xdf, Cdf = AGF.RXanalysis(app, vlevel, controller, escens)
+
+            R[i] = Rdf
+            X[i] = Xdf
+            C[i] = Cdf
+
+        parameters = {'R': R, 'X': X, 'C': C}
+
+        if setup ==  'controller':
+
+            p = 'C'
+
+            Rconcv = list(parameters[p][0].loc[:, 'hPV']) + list(parameters[p][0].loc[:, 'hW']) + list(
+                parameters[p][0].loc[:, 'lPV']) + list(parameters[p][0].loc[:, 'lW'])
+            Rconcphi = list(parameters[p][1].loc[:, 'hPV']) + list(parameters[p][1].loc[:, 'hW']) + list(
+                parameters[p][1].loc[:, 'lPV']) + list(parameters[p][1].loc[:, 'lW'])
+
+            plt.figure(0)
+
+            plt.boxplot([Rconcv,Rconcphi])
+
+            plt.show()
+
+
+        #elif setup == 'GFMdepth':
+
+
 
 
 
@@ -103,9 +143,9 @@ elif mode == 'RMSE':
 
         if setup == 'constvconstphi':
 
-            concv = list(normRMSEv.loc[:, 'hPV']) + list(normRMSEv.loc[:, 'hW']) + list(normRMSEv.loc[:, 'hW']) + list(
+            concv = list(normRMSEv.loc[:, 'hPV']) + list(normRMSEv.loc[:, 'hW']) + list(
                 normRMSEv.loc[:, 'lPV']) + list(normRMSEv.loc[:, 'lW'])
-            concphi = list(normRMSEphi.loc[:, 'hPV']) + list(normRMSEphi.loc[:, 'hW']) + list(normRMSEphi.loc[:, 'hW']) + list(
+            concphi = list(normRMSEphi.loc[:, 'hPV']) + list(normRMSEphi.loc[:, 'hW']) + list(
                 normRMSEphi.loc[:, 'lPV']) + list(normRMSEphi.loc[:, 'lW'])
 
             box = plt.boxplot([concv, concphi], patch_artist=True)
@@ -225,7 +265,7 @@ elif mode == 'RMSE':
 elif mode == 'multievent':
 
     eventype = 'vdip' # 'vdip' or 'freqramp'
-    controller = 'constv'
+    controller = 'constphi'
     pathmode = 'Read'
 
     print('Creating or reading results folder')
@@ -236,7 +276,7 @@ elif mode == 'multievent':
 
     elif pathmode == 'Read':
 
-        basepath = DTM.ReadorCreatePath('Read', readmode='userfile', folder='/31.05.2021_13-44-25_vdip_constv_AG/', filename='')
+        basepath = DTM.ReadorCreatePath('Read', readmode='userfile', folder='/14.06.2021_07-38-00_vdip_constphi_AG/', filename='')
 
     else:
 
@@ -245,7 +285,7 @@ elif mode == 'multievent':
     if eventype == 'vdip':
 
         values = list(np.arange(-0.9, -0.05, 0.1))
-        values.extend((-0.05, 0.05, 0.1, 0.15, 0.2))
+        values.extend((-0.05, 0.05, 0.1))
         values = [round(val, 2) for val in values]
 
     else:
@@ -260,7 +300,7 @@ elif mode == 'multievent':
 
     # get relevant projects
     prjlist = [s for s in allprj if '_eq_' + controller in s.GetFullName()]
-    prjlist = prjlist[4:]
+    prjlist = prjlist
     escens = escens
     # for every project of the specified controller
     for prj in prjlist:
